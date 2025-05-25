@@ -1,26 +1,30 @@
 cmake_minimum_required(VERSION 3.10)
 project(hermes_mysql_udf)
 
-# ========== 依赖路径 ==========
-# MySQL client headers
+# ========== Include Directories ==========
+# MySQL client development headers
 include_directories(/usr/include/mysql)
 
-# OpenFHE headers
-include_directories(/usr/local/include/openfhe) # for openfhe.h
+# OpenFHE headers (required for OpenFHE::CryptoContext and BFV APIs)
+include_directories(/usr/local/include/openfhe)
 include_directories(/usr/local/include/openfhe/core)
 include_directories(/usr/local/include/openfhe/pke)
 include_directories(/usr/local/include/openfhe/binfhe)
 
-# OpenFHE lib
+# ========== Library Search Path ==========
+# Make sure the linker can find OpenFHE shared libraries
 link_directories(/usr/local/lib)
 
-# ========== 源码文件 ==========
+# ========== Source Files ==========
+# Automatically include all UDF source files under src/mysql/
 file(GLOB UDF_SRC src/mysql/*.cpp)
 
-# ========== 插件构建 ==========
+# ========== Build Shared Plugin ==========
+# Build the UDF plugin as a shared object for MySQL to load dynamically
 add_library(hermes_udf SHARED ${UDF_SRC})
 
-# ========== 链接库 ==========
+# ========== Link Libraries ==========
+# Link against the MySQL client library and OpenFHE core modules
 find_library(MYSQLCLIENT_LIBRARY NAMES mysqlclient REQUIRED)
 
 target_link_libraries(hermes_udf
@@ -29,5 +33,7 @@ target_link_libraries(hermes_udf
     OPENFHEpke
     OPENFHEbinfhe
 )
-# ========== 插件名称 ==========
+
+# ========== Plugin Output Name ==========
+# Output as libhermes_udf.so instead of default libhermes_mysql_udf.so
 set_target_properties(hermes_udf PROPERTIES OUTPUT_NAME "hermes_udf")

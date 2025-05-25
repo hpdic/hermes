@@ -2,61 +2,70 @@
 
 Hermes is a homomorphic encryption plugin for MySQL using the OpenFHE library (BFV scheme). It provides compile-time encryption, ciphertext storage, decryption, and aggregation—all as native SQL functions.
 
+## 📦 System Requirements
+
+Before proceeding, ensure the following dependencies are installed:
+
+### Required Packages
+
+- **MySQL Server (>= 8.0)**
+- **OpenFHE (>= v1.1.1)** compiled with BFV support
+- **CMake (>= 3.10)**
+- **g++ (>= 9.4)** or any C++17-compatible compiler
+- **libmysqlclient-dev**
+
+You can install required system packages via:
+
+```bash
+sudo apt update
+sudo apt install mysql-server libmysqlclient-dev cmake g++ build-essential
+```
+
+### OpenFHE Note
+
+All testing and plugin development was performed against the HPDIC-maintained OpenFHE fork:
+
+👉 <https://github.com/hpdic/openfhe-development>
+
+If you choose to use the official OpenFHE release at <https://github.com/openfheorg/openfhe-development>, **we do not guarantee compatibility** due to potential API or build differences.
+
 ## 🔧 Installation Instructions
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/hpdic/hermes.git
 cd hermes
 ```
 
-### 2. Build the Plugin
+### 2. Build and Register the Plugin
+
+Run the following script to compile Hermes, install the plugin into MySQL, and register all UDFs:
 
 ```bash
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+./script/build.sh
 ```
 
-### 3. Copy Plugin to MySQL
+### 3. Ensure OpenFHE Libraries Are Discoverable
+
+If your system cannot find OpenFHE's shared libraries (e.g., `libOPENFHEpke.so`), add this path to the system linker:
 
 ```bash
-sudo cp libhermes_udf.so /usr/lib/mysql/plugin/
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/openfhe.conf
+sudo ldconfig
 ```
 
-### 4. Ensure MySQL can see OpenFHE libraries
+This makes `/usr/local/lib` visible to the dynamic linker used by MySQL.
 
-Edit or create this file:
+### 4. Test the Plugin
+
+This will restart MySQL, reinitialize the test database, and run example encrypted queries:
 
 ```bash
-sudo mkdir -p /etc/systemd/system/mysql.service.d/
-sudo nano /etc/systemd/system/mysql.service.d/openfhe-env.conf
+./script/test.sh
 ```
 
-Add the line:
-
-```
-[Service]
-Environment=LD_LIBRARY_PATH=/usr/lib/mysql/plugin
-```
-
-Then reload MySQL:
-
-```bash
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload
-sudo systemctl restart mysql
-```
-
-### 5. Run the Quick Test Script
-
-```bash
-chmod +x hermes_test_quick.sh
-./hermes_test_quick.sh
-```
-
-## 📦 Features Tested
+## ✅ Features Tested
 
 - `HERMES_ENC_SINGULAR_BFV`: Encrypt a plaintext integer as BFV ciphertext (base64).
 - `HERMES_DEC_SINGULAR_BFV`: Decrypt the ciphertext and return plaintext.
