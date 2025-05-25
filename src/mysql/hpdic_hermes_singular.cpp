@@ -86,7 +86,36 @@ static std::string encodeBase64(const std::string &in) {
 CryptoContext<DCRTPoly> &get_context() {
   static CryptoContext<DCRTPoly> ctx = [] {
     CCParams<CryptoContextBFVRNS> p;
-    p.SetPlaintextModulus(65537);
+
+    /**
+     * ======================= Plaintext Modulus Notes ========================
+     *
+     * OpenFHE's BFV scheme uses a cyclotomic polynomial ring of order m,
+     * where m is typically a power of 2. If not explicitly set, OpenFHE
+     * defaults to:
+     *
+     *     m = 2^14 = 16384
+     *
+     * To ensure encoding succeeds, the plaintext modulus p must satisfy:
+     *
+     *     (p - 1) % m == 0     i.e.,   p ≡ 1 mod m
+     *
+     * If this condition is not met, OpenFHE will throw runtime exceptions:
+     *
+     *     SetParams_2n(): The modulus value must be prime.
+     *     RootOfUnity(): The modulus and ring dimension must be compatible.
+     *
+     * The value 268,369,921 is a safe prime satisfying:
+     *
+     *     268,369,921 ≡ 1 mod 16384
+     *
+     * This supports signed plaintext integers up to approximately ±134 million.
+     *
+     * ⚠️  If you change the ring dimension m, you must select a new p such
+     *     that p ≡ 1 mod m.
+     */
+    p.SetPlaintextModulus(268369921); // safe default for m = 16384
+
     p.SetMultiplicativeDepth(2);
     auto c = GenCryptoContext(p);
     c->Enable(PKE);
@@ -109,6 +138,54 @@ KeyPair<DCRTPoly> &get_keypair() {
 }
 
 extern "C" {
+
+bool HERMES_MUL_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT ||
+      args->arg_type[1] != STRING_RESULT) {
+    std::strcpy(msg, "HERMES_MUL_BFV requires two base64-encoded ciphertexts.");
+    return 1;
+  }
+  initid->maybe_null = 1;
+  initid->max_length = 65535;
+  return 0;
+}
+
+char *HERMES_MUL_BFV(UDF_INIT *, UDF_ARGS *args, char *, unsigned long *len,
+                     char *is_null, char *error) {
+  try {
+    if (!args->args[0] || !args->args[1]) {
+      *is_null = 1;
+      return nullptr;
+    }
+
+    // Deserialize both ciphertexts
+    std::string a_str(args->args[0], args->lengths[0]);
+    std::string b_str(args->args[1], args->lengths[1]);
+    std::stringstream sa(decodeBase64(a_str)), sb(decodeBase64(b_str));
+    Ciphertext<DCRTPoly> ca, cb;
+    Serial::Deserialize(ca, sa, SerType::BINARY);
+    Serial::Deserialize(cb, sb, SerType::BINARY);
+
+    // Perform EvalMult
+    auto ctxt_mul = get_context()->EvalMult(ca, cb);
+
+    // Re-encode and return
+    std::stringstream sout;
+    Serial::Serialize(ctxt_mul, sout, SerType::BINARY);
+    std::string encoded = encodeBase64(sout.str());
+
+    *len = encoded.size();
+    *is_null = 0;
+    *error = 0;
+    return strdup(encoded.c_str());
+  } catch (...) {
+    *is_null = 1;
+    *error = 1;
+    return nullptr;
+  }
+}
+
+void HERMES_MUL_BFV_deinit(UDF_INIT *) {}  
 
 bool HERMES_SUM_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
   if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT) {

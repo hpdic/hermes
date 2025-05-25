@@ -9,6 +9,7 @@
 # - Encrypting salaries with BFV
 # - Verifying decryption correctness
 # - Running homomorphic aggregation via GROUP BY
+# - Performing ciphertext × ciphertext multiplication (salary × months)
 #
 # Assumes: Plugin is already compiled, registered, and MySQL is running.
 # ============================================================
@@ -21,7 +22,13 @@ MYSQL_PASS="hpdic2023"
 echo "[*] Running encrypted SQL tests..."
 
 mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
--- Setup database and base table
+-- ============================================================
+-- 1. Setup: Create database and original employee table
+-- ============================================================
+EOF
+
+echo -e "\n[1] Setting up test database and base employee table..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
 CREATE DATABASE IF NOT EXISTS hpdic_db;
 USE hpdic_db;
 
@@ -33,14 +40,16 @@ CREATE TABLE employee_grouped (
   salary INT
 );
 
--- Insert test data
 INSERT INTO employee_grouped VALUES
   (1, 'Alice', 'HR', 5200),
   (2, 'Bob',   'HR', 4800),
   (3, 'Carol', 'ENG', 6000),
   (4, 'Dave',  'ENG', 5900);
+EOF
 
--- Encrypt salary column using Hermes
+echo -e "\n[2] Encrypting salary values using HERMES_ENC_SINGULAR_BFV..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
+USE hpdic_db;
 DROP TABLE IF EXISTS employee_enc_grouped;
 CREATE TABLE employee_enc_grouped (
   id INT,
@@ -52,24 +61,33 @@ CREATE TABLE employee_enc_grouped (
 INSERT INTO employee_enc_grouped
 SELECT id, name, department, HERMES_ENC_SINGULAR_BFV(salary)
 FROM employee_grouped;
+EOF
 
--- Preview ciphertext prefix
+echo -e "\n[3] Previewing ciphertext prefix (first 8 chars)..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
+USE hpdic_db;
 SELECT 
   id, 
   name, 
   department, 
   LEFT(salary_enc_bfv, 8) AS salary_enc_preview
 FROM employee_enc_grouped;
+EOF
 
--- Decrypt and validate salary
+echo -e "\n[4] Decrypting encrypted salaries using HERMES_DEC_SINGULAR_BFV..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
+USE hpdic_db;
 SELECT 
   id, 
   name, 
   department, 
   HERMES_DEC_SINGULAR_BFV(salary_enc_bfv) AS salary_plain
 FROM employee_enc_grouped;
+EOF
 
--- Homomorphic SUM by department
+echo -e "\n[5] Performing homomorphic sum by department using HERMES_SUM_BFV..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
+USE hpdic_db;
 SELECT 
   department, 
   HERMES_SUM_BFV(salary_enc_bfv) AS total_salary
@@ -78,4 +96,21 @@ GROUP BY department
 ORDER BY department;
 EOF
 
-echo "[✓] Test completed successfully."
+echo -e "\n[6] Adding encrypted months column (12 months/year)..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
+USE hpdic_db;
+ALTER TABLE employee_enc_grouped ADD COLUMN months_enc_bfv LONGTEXT;
+UPDATE employee_enc_grouped 
+SET months_enc_bfv = HERMES_ENC_SINGULAR_BFV(12);
+EOF
+
+echo -e "\n[7] Computing annual salary = salary × months (homomorphic mul)..."
+mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
+USE hpdic_db;
+SELECT 
+  name, 
+  HERMES_DEC_SINGULAR_BFV(HERMES_MUL_BFV(salary_enc_bfv, months_enc_bfv)) AS annual_salary
+FROM employee_enc_grouped;
+EOF
+
+echo -e "\n[✓] Test completed successfully."
