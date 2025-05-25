@@ -1,9 +1,6 @@
 # Hermes: MySQL Plugin for Homomorphic Encryption
 
-Hermes is a research prototype that integrates homomorphic encryption into SQL
-via MySQL UDF (User-Defined Function) plugins using the OpenFHE library. It currently
-supports compile-time encryption, runtime decryption, and encrypted aggregation using
-the BFV scheme in single-slot mode.
+The name Hermes stands for Homomorphic Encryption for Relational MySQL Engine Support. It reflects the system’s goal of seamlessly integrating encrypted computation into SQL workflows using native MySQL UDF plugins. The name is also inspired by Hermes, the Greek god of communication and messenger of the gods—symbolizing secure, efficient delivery of information across domains.
 
 ## 🔍 Key Features
 
