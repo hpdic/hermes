@@ -15,7 +15,7 @@ PLUGIN_NAME="libhermes_udf.so"
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
-sudo cp -v lib${PLUGIN_NAME} /usr/lib/mysql/plugin
+sudo cp -v ${PLUGIN_NAME} /usr/lib/mysql/plugin
 
 # === 注册函数 + 创建表 + 加密 + 解密 + 分组聚合 ===
 mysql -u $MYSQL_USER -p$MYSQL_PASS <<EOF
@@ -48,9 +48,21 @@ CREATE AGGREGATE FUNCTION HERMES_SUM_BFV RETURNS INTEGER SONAME '${PLUGIN_NAME}'
 
 -- 加密后存储
 DROP TABLE IF EXISTS employee_enc_grouped;
-CREATE TABLE employee_enc_grouped AS
-SELECT id, name, department, HERMES_ENC_SINGULAR_BFV(salary) AS salary_enc_bfv
+CREATE TABLE employee_enc_grouped (
+  id INT,
+  name VARCHAR(50),
+  department VARCHAR(32),
+  salary_enc_bfv LONGTEXT
+);
+INSERT INTO employee_enc_grouped
+SELECT id, name, department, HERMES_ENC_SINGULAR_BFV(salary)
 FROM employee_grouped;
+SELECT 
+  id, 
+  name, 
+  department, 
+  LEFT(salary_enc_bfv, 8) AS salary_enc_preview 
+FROM employee_enc_grouped;
 
 -- 解密验证
 SELECT id, name, department, HERMES_DEC_SINGULAR_BFV(salary_enc_bfv) AS salary_plain
