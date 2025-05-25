@@ -7,6 +7,10 @@
 
 set -e
 
+echo "[*] Restarting MySQL to clear UDF state..."
+sudo systemctl restart mysql
+sleep 1
+
 MYSQL_USER="hpdic"
 MYSQL_PASS="hpdic2023"
 PLUGIN_NAME="libhermes_udf.so"
