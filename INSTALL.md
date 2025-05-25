@@ -1,6 +1,6 @@
 # Hermes: Encrypted Query Processing via MySQL + OpenFHE
 
-Hermes is a homomorphic encryption plugin for MySQL using the OpenFHE library (BFV scheme). It provides compile-time encryption, ciphertext storage, decryption, and aggregation—all as native SQL functions.
+Hermes is a homomorphic encryption plugin for MySQL using the OpenFHE library (BFV scheme). It supports compile-time encryption, secure ciphertext storage, SQL-compatible decryption, aggregation, and homomorphic multiplication—all as native UDFs callable from SQL.
 
 ---
 
@@ -11,13 +11,13 @@ Ensure the following dependencies are installed:
 ### Required Packages
 
 - **MySQL Server (>= 8.0)**
-- **OpenFHE (>= v1.1.1)** compiled with BFV support
+- **OpenFHE (>= v1.1.1)** with BFV scheme support
 - **CMake (>= 3.10)**
 - **g++ (>= 9.4)** or any C++17-compatible compiler
 - **libmysqlclient-dev**
 - **Python 3** (for helper scripts)
 
-Install core packages via:
+Install essentials via:
 
 ```bash
 sudo apt update
@@ -28,11 +28,11 @@ sudo apt install mysql-server libmysqlclient-dev cmake g++ build-essential pytho
 
 ## 🔁 OpenFHE Compatibility
 
-All testing and plugin development was performed using this fork:
+All testing is performed using the following fork:
 
 👉 <https://github.com/hpdic/openfhe-development>
 
-⚠️ **We do not guarantee compatibility** with the upstream OpenFHE releases due to possible API divergence.
+⚠️ Compatibility with upstream OpenFHE is **not guaranteed** due to possible API differences.
 
 ---
 
@@ -47,22 +47,22 @@ cd hermes
 
 ### 2. Build and Register the Plugin
 
-This will compile the plugin, copy it into MySQL’s plugin directory, and register all UDFs:
+This step compiles the plugin, installs it into MySQL’s plugin directory, and registers all functions:
 
 ```bash
 ./script/build.sh
 ```
 
-### 3. Ensure OpenFHE Shared Libraries Are Visible
+### 3. Link OpenFHE Shared Libraries
 
-If your system cannot find OpenFHE's shared libraries (e.g., `libOPENFHEpke.so`), add this path to the system linker:
+If the system cannot find `libOPENFHE*.so`, run:
 
 ```bash
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/openfhe.conf
 sudo ldconfig
 ```
 
-### 4. Test the Plugin
+### 4. Run the Test Suite
 
 ```bash
 ./script/test.sh
@@ -70,54 +70,53 @@ sudo ldconfig
 
 ---
 
+## ✅ UDFs and Features
+
+| Function | Description |
+|----------|-------------|
+| `HERMES_ENC_SINGULAR_BFV(val)` | Encrypt a plaintext integer into a BFV ciphertext (base64) |
+| `HERMES_DEC_SINGULAR_BFV(ciphertext)` | Decrypt base64-encoded ciphertext and return plaintext |
+| `HERMES_SUM_BFV(ciphertext)` | Aggregate ciphertexts over SQL groups and return decrypted sum |
+| `HERMES_MUL_SCALAR_BFV(ciphertext, scalar)` | Multiply ciphertext by a plaintext scalar |
+| `HERMES_MUL_BFV(ciphertext1, ciphertext2)` | Multiply two ciphertexts homomorphically |
+
+Fully compatible with standard SQL pipelines such as `SELECT`, `GROUP BY`, and joins.
+
+---
+
 ## 🧠 Tips & Troubleshooting
 
-### Picking a Valid BFV Plaintext Modulus
+### Valid Plaintext Moduli
 
-OpenFHE requires the plaintext modulus $p$ to satisfy:
+BFV requires the plaintext modulus $p$ to satisfy:
 
 $$
-\frac{p - 1}{m} \in \mathbb{Z}
+(p - 1) \bmod m = 0
 $$
 
 Where $m$ is the cyclotomic ring dimension (default: $2^{14} = 16384$).
 
-✅ Valid example: `268369921`  
-❌ Invalid example: `131101` (will crash with `SetParams_2n()` or `RootOfUnity()`)
+✅ Valid: `268369921`  
+❌ Invalid: `131101` (leads to `SetParams_2n()` / `RootOfUnity()` errors)
 
-A helper script is provided to scan for suitable primes that satisfy:
-
-```bash
-(p - 1) % m == 0
-```
-
-Run it via:
+To search for valid $p$:
 
 ```bash
 python3 scripts/find_valid_moduli.py --ring-dim 16384 --min 100000000 --max 300000000
 ```
 
-### Diagnosing MySQL Plugin Crashes
+### Diagnosing Crashes
 
-If MySQL crashes during an encrypted query, check:
+If MySQL crashes during plugin execution, check logs:
 
 ```bash
 sudo tail -n 100 /var/log/mysql/error.log
 ```
 
-Common crash reasons:
-- Incompatible BFV modulus
-- Memory limits exceeded
-- Improper plugin linkage
-
----
-
-## ✅ Features Tested
-
-- `HERMES_ENC_SINGULAR_BFV`: Encrypt a plaintext integer as BFV ciphertext (base64)
-- `HERMES_DEC_SINGULAR_BFV`: Decrypt the ciphertext and return plaintext
-- `HERMES_SUM_BFV`: Aggregate encrypted values and return the decrypted sum
-- Full compatibility with `GROUP BY` SQL clause
+Typical causes:
+- Invalid modulus
+- Memory exhaustion
+- Mislinked plugin
 
 ---
 
@@ -125,4 +124,4 @@ Common crash reasons:
 
 Dr. Dongfang Zhao  
 HPDIC Lab, University of Washington  
-Email: <dzhao@cs.washington.edu>
+📧 dzhao@cs.washington.edu

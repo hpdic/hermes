@@ -1,3 +1,30 @@
+# ============================================================
+# CMakeLists.txt — Build Configuration for Hermes UDF Plugin
+# Author: Dr. Dongfang Zhao (dzhao@cs.washington.edu)
+# Last Updated: 2025-05-26
+#
+# This CMake build script compiles the Hermes MySQL UDF plugin,
+# which enables encrypted SQL computation using OpenFHE (BFV scheme).
+#
+# Features:
+# - Automatically includes all UDF source files from src/mysql/
+# - Links against OpenFHE (core, pke, binfhe) and MySQL client libraries
+# - Produces a dynamically loadable .so plugin for MySQL
+#
+# Requirements:
+# - OpenFHE installed under /usr/local (default build location)
+# - MySQL development headers and libmysqlclient available
+#
+# Usage:
+#   $ mkdir build && cd build
+#   $ cmake ..
+#   $ make
+#   $ sudo cp libhermes_udf.so /usr/lib/mysql/plugin/
+#
+# Note: If OpenFHE or MySQL is installed elsewhere, modify the include/link
+# paths accordingly.
+# ============================================================
+
 cmake_minimum_required(VERSION 3.10)
 project(hermes_mysql_udf)
 

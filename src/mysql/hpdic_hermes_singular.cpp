@@ -4,24 +4,42 @@
  * This file defines a set of MySQL User-Defined Functions (UDFs)
  * that enable encrypted SQL computation using OpenFHE (BFV scheme).
  *
- * Core Functions:
- * - HERMES_ENC_SINGULAR_BFV: Encrypt a single integer value into a
- * base64-encoded ciphertext.
- * - HERMES_DEC_SINGULAR_BFV: Decrypt a base64 ciphertext into the original
- * integer.
- * - HERMES_SUM_BFV: SQL-compliant AGGREGATE FUNCTION for homomorphic summation
- * over ciphertexts.
+ * Core Capabilities:
+ * - Encryption/Decryption of single integers
+ * - Homomorphic summation (aggregate)
+ * - Homomorphic ciphertext-ciphertext multiplication
+ * - Homomorphic scalar multiplication with plaintext values
  *
- * Technical Highlights:
- * - All ciphertexts are encoded and decoded via OpenFHE’s binary serializer +
- * manual base64.
- * - Context and keys are managed via static singletons for lazy initialization.
- * - Fully compatible with GROUP BY and native SQL aggregation pipelines.
+ * Exposed Functions:
+ * - HERMES_ENC_SINGULAR_BFV(int) → base64 ciphertext
+ *     Encrypts a single integer as a BFV ciphertext.
+ *
+ * - HERMES_DEC_SINGULAR_BFV(base64_ct) → int
+ *     Decrypts a BFV ciphertext back to its original integer.
+ *
+ * - HERMES_SUM_BFV(base64_ct) → int
+ *     Aggregate function: sums ciphertexts over SQL groups.
+ *     Use with GROUP BY for encrypted aggregation.
+ *
+ * - HERMES_MUL_BFV(base64_ct1, base64_ct2) → base64 ciphertext
+ *     Multiplies two ciphertexts homomorphically.
+ *
+ * - HERMES_MUL_SCALAR_BFV(base64_ct, scalar) → base64 ciphertext
+ *     Performs plaintext-ciphertext scalar multiplication.
+ *     The scalar can be int, double, or string-parsable integer.
+ *
+ * Technical Notes:
+ * - All ciphertexts are serialized with OpenFHE’s binary format,
+ *   and encoded/decoded using manual base64 routines.
+ * - Keys and encryption context are globally shared via static
+ *   singletons. This avoids repeated keygen but limits tenancy.
+ * - Only single-slot ciphertexts are supported; no batching.
+ * - Ciphertext size is bounded by max_length = 65535 bytes.
  *
  * Limitations:
- * - Supports only single-slot BFV ciphertexts (no batching).
- * - Global key/context shared across all threads (not multi-tenant safe).
- * - No key rotation or key separation; not secure in adversarial settings.
+ * - No support for vector packing or multi-slot encoding.
+ * - Not thread-safe or multi-user safe (no key isolation).
+ * - Does not persist keys across MySQL restarts.
  *
  * Author: Dr. Dongfang Zhao
  * Institution: University of Washington (HPDIC Lab)

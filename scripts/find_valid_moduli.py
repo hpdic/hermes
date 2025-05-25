@@ -1,5 +1,48 @@
 #!/usr/bin/env python3
-# find_valid_moduli.py — search primes p such that (p-1) % m == 0
+# ============================================================
+# find_valid_moduli.py — Search for Valid Prime Moduli
+# Author: Dr. Dongfang Zhao (dzhao@cs.washington.edu)
+# Last Updated: 2025-05-26
+#
+# This script searches for prime integers p such that (p - 1) 
+# is divisible by a given integer m; that is:
+#
+#     (p - 1) % m == 0
+#
+# These primes p ensure the existence of a multiplicative 
+# subgroup of order m in the multiplicative group ℤ_p^×.
+# This property is critical for many applications, including:
+#
+# - Constructing primitive m-th roots of unity in ℤ_p
+# - Enabling Number Theoretic Transforms (NTT) of length m
+# - Generating plaintext modulus p with known cyclotomic order
+# - Supporting batching in homomorphic encryption schemes
+#   (e.g., BFV, BGV, CKKS) via CRT packing over ℤ_p
+#
+# ----------------------------
+# Usage:
+#   python find_valid_moduli.py <m> [--limit N]
+#
+# Parameters:
+#   <m>         — Desired subgroup order
+#   --limit N   — (Optional) Upper bound on candidate primes to search
+#                 Default is 10,000
+#
+# Output:
+#   A printed list of primes p satisfying (p - 1) % m == 0,
+#   along with their corresponding values of (p - 1) // m
+#
+# Example:
+#   $ python find_valid_moduli.py 128 --limit 5000
+#   Valid primes p such that (p - 1) % 128 == 0:
+#   p = 257     (k = 2)
+#   p = 641     (k = 5)
+#   ...
+#
+# Note:
+#   - The primes found can be directly used to define plaintext moduli
+#     for OpenFHE’s packed encoding schemes.
+# ============================================================
 
 import argparse
 from sympy import isprime

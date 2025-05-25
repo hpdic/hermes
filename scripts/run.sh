@@ -10,6 +10,7 @@
 # - Verifying decryption correctness
 # - Running homomorphic aggregation via GROUP BY
 # - Performing ciphertext × ciphertext multiplication (salary × months)
+# - Performing ciphertext × scalar multiplication (salary × bonus scalar)
 #
 # Assumes: Plugin is already compiled, registered, and MySQL is running.
 # ============================================================

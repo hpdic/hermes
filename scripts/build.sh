@@ -6,8 +6,14 @@
 #
 # This script compiles the Hermes plugin (based on OpenFHE),
 # installs it to the MySQL plugin directory, restarts MySQL
-# to clear previous UDF state, and registers the homomorphic
-# encryption functions as native SQL UDFs.
+# to clear previous UDF state, and registers the following
+# homomorphic encryption functions as native SQL UDFs:
+#
+# - HERMES_ENC_SINGULAR_BFV: encrypts a plaintext integer
+# - HERMES_DEC_SINGULAR_BFV: decrypts a BFV ciphertext
+# - HERMES_SUM_BFV_DECRYPTED: decrypts and aggregates across rows
+# - HERMES_MUL_BFV: multiplies two ciphertexts (BFV × BFV)
+# - HERMES_MUL_SCALAR_BFV: multiplies ciphertext by a scalar (BFV × scalar)
 #
 # Note: Run this script from the project root.
 # ============================================================
