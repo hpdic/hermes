@@ -139,6 +139,85 @@ KeyPair<DCRTPoly> &get_keypair() {
 
 extern "C" {
 
+bool HERMES_MUL_SCALAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT) {
+    std::strcpy(msg, "HERMES_MUL_SCALAR_BFV(ciphertext, scalar) expects "
+                     "(base64 string, scalar)");
+    return 1;
+  }
+
+  if (args->arg_type[1] != INT_RESULT && args->arg_type[1] != STRING_RESULT &&
+      args->arg_type[1] != REAL_RESULT) {
+    std::strcpy(msg, "Second argument must be INT, STRING, or DOUBLE");
+    return 1;
+  }
+
+  initid->maybe_null = 1;
+  initid->max_length = 65535;
+  return 0;
+}
+
+char *HERMES_MUL_SCALAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
+                            unsigned long *length, char *is_null, char *error) {
+  try {
+    if (!args->args[0] || !args->args[1]) {
+      *is_null = 1;
+      return nullptr;
+    }
+
+    // Deserialize ciphertext
+    std::string encoded(args->args[0], args->lengths[0]);
+    std::string decoded = decodeBase64(encoded);
+    std::stringstream ss(decoded);
+    Ciphertext<DCRTPoly> ct;
+    Serial::Deserialize(ct, ss, SerType::BINARY);
+
+    // Parse scalar
+    int64_t scalar = 0;
+    if (args->arg_type[1] == INT_RESULT) {
+      scalar = *reinterpret_cast<long long *>(args->args[1]);
+    } else if (args->arg_type[1] == REAL_RESULT) {
+      scalar = static_cast<int64_t>(*reinterpret_cast<double *>(args->args[1]));
+    } else {
+      std::string scalar_str(args->args[1], args->lengths[1]);
+      scalar = std::stoll(scalar_str);
+    }
+
+    // Construct scalar plaintext and multiply
+    Plaintext ptScalar = get_context()->MakePackedPlaintext({scalar});
+    auto result = get_context()->EvalMult(ct, ptScalar);
+
+    // Serialize result
+    std::stringstream out;
+    Serial::Serialize(result, out, SerType::BINARY);
+    std::string reencoded = encodeBase64(out.str());
+
+    char *ret = new char[reencoded.size() + 1];
+    std::memcpy(ret, reencoded.data(), reencoded.size());
+    ret[reencoded.size()] = '\0';
+
+    *length = reencoded.size();
+    *is_null = 0;
+    *error = 0;
+    return ret;
+
+  } catch (const std::exception &e) {
+    std::cerr << "[HERMES_MUL_SCALAR_BFV] exception: " << e.what() << std::endl;
+    *is_null = 1;
+    *error = 1;
+    return nullptr;
+  } catch (...) {
+    std::cerr << "[HERMES_MUL_SCALAR_BFV] unknown exception" << std::endl;
+    *is_null = 1;
+    *error = 1;
+    return nullptr;
+  }
+}
+
+void HERMES_MUL_SCALAR_BFV_deinit(UDF_INIT *) {
+  // No cleanup needed
+}
+
 bool HERMES_MUL_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
   if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT ||
       args->arg_type[1] != STRING_RESULT) {
