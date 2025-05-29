@@ -4,8 +4,6 @@ project(hermes_singular_udf)
 # Build the singular UDF plugin as a shared library
 add_library(hermes_singular_udf SHARED
     udf.cpp
-    ${CMAKE_SOURCE_DIR}/src/context.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils.cpp
 )
 
 # Include directories
