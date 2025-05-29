@@ -1,19 +1,10 @@
 #!/bin/bash
-# ============================================================
-# test.sh — Run Encrypted SQL Tests via Hermes UDF Plugin
+# run_singular.sh — End-to-end test for Hermes MySQL UDFs with BFV encryption
 # Author: Dr. Dongfang Zhao (dzhao@cs.washington.edu)
-# Last Updated: 2025-05-26
+# Last Updated: 2025-05-28
 #
-# This script tests the Hermes MySQL UDFs by:
-# - Creating sample employee data
-# - Encrypting salaries with BFV
-# - Verifying decryption correctness
-# - Running homomorphic aggregation via GROUP BY
-# - Performing ciphertext × ciphertext multiplication (salary × months)
-# - Performing ciphertext × scalar multiplication (salary × bonus scalar)
-#
-# Assumes: Plugin is already compiled, registered, and MySQL is running.
-# ============================================================
+# Usage: ./run_singular.sh
+# This script tests the UDF plugin through encrypted SQL queries.
 
 set -e
 
