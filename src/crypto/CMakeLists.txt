@@ -8,6 +8,7 @@ add_library(crypto
     keygen.cpp
     encrypt.cpp
     decrypt.cpp
+    serialize.cpp
 )
 
 # Make headers in this directory available to users of the 'crypto' target
@@ -30,20 +31,13 @@ target_link_libraries(crypto PUBLIC
 # Unit Tests for crypto
 # -----------------------
 # Each test must be a separate executable (each has its own main())
-add_executable(test_keygen test/test_keygen.cpp)
-target_link_libraries(test_keygen PRIVATE crypto)
-
-add_executable(test_encrypt test/test_encrypt.cpp)
-target_link_libraries(test_encrypt PRIVATE crypto)
-
-add_executable(test_decrypt test/test_decrypt.cpp)
-target_link_libraries(test_decrypt PRIVATE crypto)
-
 add_executable(test_eval test/test_eval.cpp)
 target_link_libraries(test_eval PRIVATE crypto)
 
+# test_serialize: Unit test for context/keypair/ciphertext serialization
+add_executable(test_serialize test/test_serialize.cpp)
+target_link_libraries(test_serialize PRIVATE crypto)
+
 # Optionally, add common include path for tests
-target_include_directories(test_keygen PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
-target_include_directories(test_encrypt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
-target_include_directories(test_decrypt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
 target_include_directories(test_eval PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
+target_include_directories(test_serialize PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)

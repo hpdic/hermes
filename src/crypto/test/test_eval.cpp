@@ -24,7 +24,7 @@ using namespace lbcrypto;
 
 int main() {
   std::cout << "[test_eval] Initializing BFV context..." << std::endl;
-  auto ctx = getBfvContext();
+  auto ctx = makeBfvContext();
   auto kp = generateKeypair(ctx);
 
   int64_t a = 7;

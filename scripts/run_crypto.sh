@@ -12,7 +12,7 @@ echo "[*] Running crypto module unit tests..."
 
 BIN_DIR="./build/src/crypto"  # Or wherever CMake puts test binaries
 
-for exe in test_keygen test_encrypt test_decrypt test_eval; do
+for exe in test_keygen test_encrypt test_decrypt test_eval test_serialize; do
   if [[ -f "$BIN_DIR/$exe" ]]; then
     echo -e "\n[+] Running $exe..."
     "$BIN_DIR/$exe"
