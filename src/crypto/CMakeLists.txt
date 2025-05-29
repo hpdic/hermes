@@ -41,3 +41,5 @@ target_link_libraries(test_serialize PRIVATE crypto)
 # Optionally, add common include path for tests
 target_include_directories(test_eval PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
 target_include_directories(test_serialize PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
+
+set_target_properties(crypto PROPERTIES POSITION_INDEPENDENT_CODE ON)
