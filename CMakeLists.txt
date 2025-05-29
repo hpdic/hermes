@@ -11,3 +11,4 @@ find_package(OpenFHE REQUIRED)
 # Add submodules
 add_subdirectory(src/singular)
 add_subdirectory(src/crypto)
+add_subdirectory(src/pack) 
