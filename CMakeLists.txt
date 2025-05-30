@@ -1,3 +1,5 @@
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 cmake_minimum_required(VERSION 3.10)
 project(hermes)
 
@@ -12,3 +14,4 @@ find_package(OpenFHE REQUIRED)
 add_subdirectory(src/singular)
 add_subdirectory(src/crypto)
 add_subdirectory(src/pack) 
+add_subdirectory(src/tools)

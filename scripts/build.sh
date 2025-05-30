@@ -24,17 +24,6 @@
 
 set -e
 
-echo "[*] Ensuring temporary runtime directory exists..."
-TMP_RUNTIME_DIR="/tmp/hermes"
-if [ ! -d "$TMP_RUNTIME_DIR" ]; then
-  echo "[*] Creating $TMP_RUNTIME_DIR ..."
-  sudo mkdir -p "$TMP_RUNTIME_DIR"
-  sudo chown mysql:mysql "$TMP_RUNTIME_DIR"
-  sudo chmod 755 "$TMP_RUNTIME_DIR"
-else
-  echo "[*] $TMP_RUNTIME_DIR already exists."
-fi
-
 export MYSQL_PWD="hpdic2023"
 MYSQL_USER="hpdic"
 
@@ -81,3 +70,22 @@ CREATE FUNCTION HERMES_DEC_VECTOR_BFV RETURNS STRING SONAME '$UDF2_NAME';
 EOF
 
 echo "[✓] All plugins built and UDFs registered successfully."
+
+# ============================================================
+# Ensure key directory (/tmp/hermes) exists and is writable
+# for gen_keys to dump the public/secret keys.
+# We explicitly reset ownership to current user to avoid MySQL permission issues.
+# ============================================================
+KEY_DIR="/tmp/hermes"
+if [ -d "$KEY_DIR" ]; then
+  echo "[*] Cleaning up existing $KEY_DIR ..."
+  sudo rm -rf "$KEY_DIR"
+fi
+
+echo "[*] Creating writable key directory at $KEY_DIR ..."
+mkdir -p "$KEY_DIR"
+chmod 755 "$KEY_DIR"
+chown "$(whoami):$(whoami)" "$KEY_DIR"
+
+echo "[*] Generating default BFV keypair to /tmp/hermes ..."
+"$BUILD_DIR/gen_keys"
