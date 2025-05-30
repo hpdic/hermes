@@ -19,16 +19,20 @@
  * Last Updated: May 29, 2025
  */
 
-#include "context.hpp"
-#include "encrypt.hpp"
-#include "keygen.hpp"
-#include "serialize.hpp"
-
 #include <cstring>
 #include <mysql/mysql.h>
 #include <mysql/udf_registration_types.h>
 #include <string>
 #include <vector>
+
+#include "context.hpp"
+#include "encrypt.hpp"
+#include "keygen.hpp"
+#include "serialize.hpp"
+#include "base64.hpp"
+
+using hermes::crypto::decodeBase64;
+using hermes::crypto::encodeBase64;
 
 using namespace hermes::crypto;
 using namespace lbcrypto;
@@ -53,46 +57,6 @@ struct PackState {
  * Institution: University of Washington
  * Last Updated: 2025-05-29
  */
-
-static const std::string b64_chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-static std::string encodeBase64(const std::string &in) {
-  std::string out;
-  int val = 0, valb = -6;
-  for (uint8_t c : in) {
-    val = (val << 8) + c;
-    valb += 8;
-    while (valb >= 0) {
-      out.push_back(b64_chars[(val >> valb) & 0x3F]);
-      valb -= 6;
-    }
-  }
-  if (valb > -6)
-    out.push_back(b64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
-  while (out.size() % 4)
-    out.push_back('=');
-  return out;
-}    
-    
-static std::string decodeBase64(const std::string &in) {
-  std::vector<int> T(256, -1);
-  for (int i = 0; i < 64; i++)
-    T[b64_chars[i]] = i;
-  std::string out;
-  int val = 0, valb = -8;
-  for (uint8_t c : in) {
-    if (T[c] == -1)
-      break;
-    val = (val << 6) + T[c];
-    valb += 6;
-    if (valb >= 0) {
-      out.push_back(char((val >> valb) & 0xFF));
-      valb -= 8;
-    }
-  }
-  return out;
-}
 
 extern "C" bool HERMES_DEC_VECTOR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
   if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT) {
@@ -155,7 +119,16 @@ extern "C" char *HERMES_DEC_VECTOR_BFV(UDF_INIT *initid, UDF_ARGS *args,
       return nullptr;
     }
 
+    // TODO: HPDIC: If you want to return a single value, you can uncomment the following line:
+    // and comment out the loop below.
     std::string resultStr = std::to_string(values[0]);
+    // std::ostringstream oss;
+    // for (size_t i = 0; i < values.size(); ++i) {
+    //   if (i > 0)
+    //     oss << ",";
+    //   oss << values[i];
+    // }
+    // std::string resultStr = oss.str();
 
   // Debug print value
     std::cerr << "[UDF] First plaintext slot: " << resultStr << std::endl;

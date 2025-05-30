@@ -2,6 +2,11 @@
 
 add_library(hermes_pack_convert_udf SHARED
     packing.cpp
+    ../crypto/base64.cpp
+    ../crypto/context.cpp
+    ../crypto/encrypt.cpp
+    ../crypto/keygen.cpp
+    ../crypto/serialize.cpp
 )
 
 target_include_directories(hermes_pack_convert_udf PRIVATE
