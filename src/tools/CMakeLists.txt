@@ -2,9 +2,6 @@
 
 add_executable(gen_keys
   gen_keys.cpp
-  ../crypto/context.cpp
-  ../crypto/keygen.cpp
-  ../crypto/serialize.cpp     
 )
 
 target_include_directories(gen_keys PRIVATE
@@ -18,6 +15,7 @@ target_include_directories(gen_keys PRIVATE
 target_link_libraries(gen_keys
   OPENFHEcore
   OPENFHEpke
+  crypto
 )
 
 set_target_properties(gen_keys PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})

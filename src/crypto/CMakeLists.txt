@@ -9,6 +9,7 @@ add_library(crypto
     encrypt.cpp
     decrypt.cpp
     serialize.cpp
+    base64.cpp
 )
 
 # Make headers in this directory available to users of the 'crypto' target
