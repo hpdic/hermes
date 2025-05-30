@@ -71,6 +71,6 @@ echo "[+] Inserted packed ciphertexts into 'packed_salaries'."
 echo "[*] Decrypting packed ciphertexts..."
 $MYSQL -e "
 SELECT dept,
-       HERMES_DEC_VECTOR_BFV(packed_ct) AS first_salary_in_group
+       CAST(HERMES_DEC_VECTOR_BFV(packed_ct) AS CHAR) AS first_salary_in_group
 FROM packed_salaries;
 "

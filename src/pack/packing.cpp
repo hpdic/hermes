@@ -33,11 +33,6 @@
 using namespace hermes::crypto;
 using namespace lbcrypto;
 
-// Global directory for storing keys (for demo/debug use only)
-const std::string kKeyDir = "/tmp/hermes";
-const std::string kPubKeyPath = kKeyDir + "/hermes_pub.key";
-const std::string kSecKeyPath = kKeyDir + "/hermes_sec.key";
-
 struct PackState {
   std::vector<int64_t> values;
 };
@@ -106,6 +101,8 @@ extern "C" bool HERMES_DEC_VECTOR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, cha
   }
   initid->maybe_null = 1;
   initid->max_length = 65535;
+  initid->ptr = nullptr; // for output buffer
+
   return 0;
 }
 
@@ -159,6 +156,11 @@ extern "C" char *HERMES_DEC_VECTOR_BFV(UDF_INIT *initid, UDF_ARGS *args,
     }
 
     std::string resultStr = std::to_string(values[0]);
+
+  // Debug print value
+    std::cerr << "[UDF] First plaintext slot: " << resultStr << std::endl;
+    std::cerr << "[UDF] resultStr length: " << resultStr.length() << std::endl;
+
     char *out = static_cast<char *>(malloc(resultStr.size() + 1));
     if (!out) {
       std::cerr << "[UDF] malloc failed" << std::endl;
@@ -169,6 +171,11 @@ extern "C" char *HERMES_DEC_VECTOR_BFV(UDF_INIT *initid, UDF_ARGS *args,
     std::memcpy(out, resultStr.data(), resultStr.size());
     out[resultStr.size()] = '\0';
     *length = resultStr.size();
+    initid->ptr = out; // Let MySQL manage this buffer
+
+    std::cerr << "[UDF] Returning string: " << out << std::endl;
+    std::cerr << "[UDF] Output length: " << *length << std::endl;
+
     return out;
 
   } catch (const std::exception &e) {
@@ -184,7 +191,12 @@ extern "C" char *HERMES_DEC_VECTOR_BFV(UDF_INIT *initid, UDF_ARGS *args,
   }
 }
 
-extern "C" void HERMES_DEC_VECTOR_BFV_deinit(UDF_INIT *) {}
+extern "C" void HERMES_DEC_VECTOR_BFV_deinit(UDF_INIT *initid) {
+  if (initid->ptr) {
+    free(initid->ptr);
+    initid->ptr = nullptr;
+  }
+}
 
 // UDF initialization
 extern "C" bool HERMES_PACK_CONVERT_init(UDF_INIT *initid, UDF_ARGS *args,
@@ -232,15 +244,16 @@ extern "C" char *HERMES_PACK_CONVERT(UDF_INIT *initid, UDF_ARGS *args,
 
   // Encrypt
   auto ctx = makeBfvContext();
-  auto kp = generateKeypair(ctx);
+  auto pk = loadPublicKey(ctx);
+  auto sk = loadSecretKey(ctx);
   auto pt = ctx->MakePackedPlaintext(state->values);
-  auto ct = encrypt(ctx, kp.publicKey, pt);
+  auto ct = encrypt(ctx, pk, pt);
   // Serialize keys to disk (for debug/demo only)
   std::ofstream pubout(kPubKeyPath, std::ios::binary);
   if (!pubout.is_open()) {
     std::cerr << "[ERROR] Failed to open public key file for writing.\n";
   } else {
-    pubout << hermes::crypto::serializePublicKey(kp.publicKey);
+    pubout << hermes::crypto::serializePublicKey(pk);
     pubout.close();
     std::cerr << "[INFO] Public key written successfully.\n";
   }
@@ -248,7 +261,7 @@ extern "C" char *HERMES_PACK_CONVERT(UDF_INIT *initid, UDF_ARGS *args,
   if (!secout.is_open()) {
     std::cerr << "[ERROR] Failed to open secret key file for writing.\n";
   } else {
-    secout << hermes::crypto::serializeSecretKey(kp.secretKey);
+    secout << hermes::crypto::serializeSecretKey(sk);
     secout.close();
     std::cerr << "[INFO] Secret key written successfully.\n";
   }
