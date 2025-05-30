@@ -1,15 +1,20 @@
 /*
- * File: serialize.hpp
- * ------------------------------------------------------------
- * HERMES Crypto Module - Serialization Interface
- * Provides interfaces to serialize/deserialize:
- * - Ciphertext (PackedEncoding)
- * - CryptoContext (BFV)
- * - Public/Private Keys (separately)
+ * File: src/crypto/serialize.hpp
+ * -------------------------------------------------------------------
+ * Serialization interfaces for HERMES homomorphic encryption objects.
+ * This module provides base64-encoded string representations of:
+ *
+ *   - Ciphertext<DCRTPoly> (typically using PackedEncoding)
+ *   - PublicKey / PrivateKey (from OpenFHE BFV context)
+ *   - CryptoContext (not exposed yet, but extensible)
+ *
+ * These functions enable cross-process transfer and persistent storage
+ * of encryption artifacts during FHE database operations. All formats
+ * are designed to be compatible with OpenFHE's serialization protocols.
  *
  * Author: Dongfang Zhao (dzhao@cs.washington.edu)
  * Institution: University of Washington
- * Last Updated: May 29, 2025
+ * Last Updated: May 30, 2025
  */
 
 #pragma once

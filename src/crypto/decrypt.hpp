@@ -1,5 +1,5 @@
 /*
- * File: decrypt.hpp
+ * File: src/crypto/decrypt.hpp
  * ------------------------------------------------------------
  * HERMES Crypto Module
  * Defines the decryption interface using OpenFHE (BFV scheme).

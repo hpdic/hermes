@@ -1,5 +1,5 @@
 /*
- * File: encrypt.hpp
+ * File: src/crypto/encrypt.hpp
  * ------------------------------------------------------------
  * HERMES Crypto Module
  * Defines the encryption interface using OpenFHE (BFV scheme).

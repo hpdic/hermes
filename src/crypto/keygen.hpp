@@ -1,7 +1,19 @@
-// keygen.hpp — OpenFHE Key Generation Interface
-// Author: Dongfang Zhao (dzhao@cs.washington.edu)
-// Institution: University of Washington
-// Last Updated: May 29, 2025
+/*
+ * File: src/crypto/keygen.hpp
+ * -------------------------------------------------------------------
+ * Provides the interface for key generation and key loading in the
+ * HERMES homomorphic encryption module. This header declares functions
+ * to create public/secret keypairs using OpenFHE's BFV scheme, as well
+ * as helper routines to persist and reload keys from the filesystem.
+ *
+ * The `generateKeypairAndSave()` function writes keys to a default
+ * debug directory (/tmp/hermes) for prototyping purposes. In production,
+ * secure key management and controlled I/O should be used instead.
+ *
+ * Author: Dongfang Zhao (dzhao@cs.washington.edu)
+ * Institution: University of Washington
+ * Last Updated: May 30, 2025
+ */
 
 #pragma once
 

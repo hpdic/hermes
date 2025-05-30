@@ -1,49 +1,42 @@
 /*
- * HERMES MySQL UDF Plugin
- * ------------------------------------------------------------
- * This file defines a set of MySQL User-Defined Functions (UDFs)
- * that enable encrypted SQL computation using OpenFHE (BFV scheme).
+ * File: src/singular/udf.cpp
+ * ------------------------------------------------------------------------
+ * HERMES MySQL UDF Plugin — Homomorphic SQL Computation with OpenFHE (BFV)
  *
- * Core Capabilities:
- * - Encryption/Decryption of single integers
- * - Homomorphic summation (aggregate)
- * - Homomorphic ciphertext-ciphertext multiplication
- * - Homomorphic scalar multiplication with plaintext values
+ * This file defines MySQL user-defined functions (UDFs) that enable SQL queries
+ * to operate directly on encrypted integers using the BFV scheme in OpenFHE.
+ * It serves as a lightweight runtime layer to support encrypted computation in
+ * standard MySQL environments via dynamically loadable plugin functions.
  *
- * Exposed Functions:
- * - HERMES_ENC_SINGULAR_BFV(int) → base64 ciphertext
- *     Encrypts a single integer as a BFV ciphertext.
+ * Main Capabilities:
+ *   - Encrypt plaintext integers from SQL inputs (HERMES_ENC_SINGULAR_BFV)
+ *   - Decrypt ciphertexts back to integers (HERMES_DEC_SINGULAR_BFV)
+ *   - Homomorphic addition via GROUP BY aggregation (HERMES_SUM_BFV)
+ *   - Ciphertext-ciphertext multiplication (HERMES_MUL_BFV)
+ *   - Scalar multiplication with plaintext integers (HERMES_MUL_SCALAR_BFV)
  *
- * - HERMES_DEC_SINGULAR_BFV(base64_ct) → int
- *     Decrypts a BFV ciphertext back to its original integer.
+ * Plugin Functions:
+ *   - char* HERMES_ENC_SINGULAR_BFV(int input)
+ *   - long long HERMES_DEC_SINGULAR_BFV(base64 ciphertext)
+ *   - long long HERMES_SUM_BFV(base64 ciphertexts...)
+ *   - char* HERMES_MUL_BFV(base64 ct1, base64 ct2)
+ *   - char* HERMES_MUL_SCALAR_BFV(base64 ct, scalar)
  *
- * - HERMES_SUM_BFV(base64_ct) → int
- *     Aggregate function: sums ciphertexts over SQL groups.
- *     Use with GROUP BY for encrypted aggregation.
- *
- * - HERMES_MUL_BFV(base64_ct1, base64_ct2) → base64 ciphertext
- *     Multiplies two ciphertexts homomorphically.
- *
- * - HERMES_MUL_SCALAR_BFV(base64_ct, scalar) → base64 ciphertext
- *     Performs plaintext-ciphertext scalar multiplication.
- *     The scalar can be int, double, or string-parsable integer.
- *
- * Technical Notes:
- * - All ciphertexts are serialized with OpenFHE’s binary format,
- *   and encoded/decoded using manual base64 routines.
- * - Keys and encryption context are globally shared via static
- *   singletons. This avoids repeated keygen but limits tenancy.
- * - Only single-slot ciphertexts are supported; no batching.
- * - Ciphertext size is bounded by max_length = 65535 bytes.
+ * Implementation Notes:
+ *   - Uses OpenFHE’s BFV scheme with fixed plaintext modulus (268,369,921)
+ *   - Keys and context are instantiated once and globally shared
+ *   - Ciphertexts are serialized in OpenFHE binary format + Base64 encoded
+ *   - No packing or batching: each ciphertext holds one integer
+ *   - Maximum return size = 65535 bytes (MySQL UDF string cap)
  *
  * Limitations:
- * - No support for vector packing or multi-slot encoding.
- * - Not thread-safe or multi-user safe (no key isolation).
- * - Does not persist keys across MySQL restarts.
+ *   - Not multi-tenant or thread-safe
+ *   - Keys are ephemeral; not persisted across restarts
+ *   - Only integer payloads supported; no vector packing or rotation
  *
- * Author: Dr. Dongfang Zhao
+ * Author: Dongfang Zhao (dzhao@cs.washington.edu)
  * Institution: University of Washington (HPDIC Lab)
- * Last Updated: May 26, 2025
+ * Last Updated: May 30, 2025
  */
 
 #include <cstring>
