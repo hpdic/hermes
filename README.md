@@ -9,21 +9,22 @@ The name is also inspired by *Hermes*, the Greek god of communication, reflectin
 
 ## 🔐 Key Features
 
-Hermes supports the following homomorphic operations via SQL-native UDFs:
+Hermes exposes the following homomorphic encryption UDFs as native SQL functions. Each UDF is implemented in a corresponding `.so` plugin module:
 
-| Function | Description |
-|----------|-------------|
-| `HERMES_ENC_SINGULAR_BFV(val)` | Encrypts a plaintext integer into a BFV ciphertext (base64) |
-| `HERMES_DEC_SINGULAR_BFV(ciphertext)` | Decrypts base64-encoded ciphertext back to an integer |
-| `HERMES_SUM_BFV(ciphertext)` | Aggregates ciphertexts over SQL groups (homomorphic addition) |
-| `HERMES_MUL_SCALAR_BFV(ciphertext, scalar)` | Multiplies ciphertext by a plaintext scalar |
-| `HERMES_MUL_BFV(ciphertext1, ciphertext2)` | Multiplies two ciphertexts homomorphically |
-| `HERMES_PACK_CONVERT(values)` | Packs a group of integers into an encrypted vector |
-| `HERMES_DEC_VECTOR_BFV(ciphertext)` | Decrypts a packed ciphertext and returns the vector |
-| `HERMES_PACK_GROUP_SUM(values)` | Computes encrypted scalar sum per group |
-| `HERMES_PACK_GLOBAL_SUM(ciphertexts)` | Computes global encrypted sum across groups |
+| Function | Description | Plugin Source |
+|----------|-------------|----------------|
+| `HERMES_ENC_SINGULAR_BFV(val)` | Encrypt a plaintext integer into a BFV ciphertext (base64) | `singular/udf.cpp` |
+| `HERMES_DEC_SINGULAR_BFV(ciphertext)` | Decrypt base64-encoded ciphertext and return plaintext | `singular/udf.cpp` |
+| `HERMES_SUM_BFV(ciphertext)` | Aggregate ciphertexts over SQL groups and return decrypted sum | `singular/udf.cpp` |
+| `HERMES_MUL_SCALAR_BFV(ciphertext, scalar)` | Multiply ciphertext by a plaintext scalar | `singular/udf.cpp` |
+| `HERMES_MUL_BFV(ciphertext1, ciphertext2)` | Multiply two ciphertexts homomorphically | `singular/udf.cpp` |
+| `HERMES_PACK_CONVERT(val)` | Pack values into a ciphertext vector (aggregate) | `pack/packing.cpp` |
+| `HERMES_DEC_VECTOR_BFV(ct)` | Decrypt and return vector plaintext as CSV | `pack/packing.cpp` |
+| `HERMES_PACK_GROUP_SUM(val)` | Compute encrypted scalar sum within group (aggregate) | `pack/packsum.cpp` |
+| `HERMES_PACK_GLOBAL_SUM(ct)` | Sum local encrypted group aggregates homomorphically | `pack/packsum.cpp` |
+| `HERMES_DEC_SINGULAR(ct)` | Decrypt scalar ciphertext (internal SO-safe only) | `pack/packsum.cpp` |
 
-All operations are **BFV-based** and compatible with SQL pipelines (e.g., `GROUP BY`, `JOIN`, `CAST`).
+All functions use the **BFV** scheme via [OpenFHE](https://github.com/openfheorg/openfhe-development) and are compatible with standard SQL operators such as `SELECT`, `GROUP BY`, and `CAST`.
 
 ---
 
