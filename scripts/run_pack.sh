@@ -18,13 +18,7 @@ MYSQL="mysql -u hpdic -D hpdic_db"
 
 # 0. Write start-of-test marker to MySQL error log
 TIMESTAMP=$(date "+%F %T")
-(
-  $MYSQL -e "
-  DO
-    SIGNAL SQLSTATE '45000'
-    SET MESSAGE_TEXT = '=== NEW HERMES PACK TEST @ ${TIMESTAMP} ===';
-  "
-) 2>/dev/null || true
+echo -e "\n[HERMES-TEST] === NEW HERMES PACK TEST @ $TIMESTAMP ===" | sudo tee -a /var/log/mysql/error.log
 
 # 1. Create employee table
 $MYSQL <<EOF
