@@ -44,24 +44,24 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
   return kp;
 }
 
-PublicKey<DCRTPoly> loadPublicKey(CryptoContext<DCRTPoly> ctx) {
+PublicKey<DCRTPoly> loadPublicKey() {
   std::ifstream in(kPubKeyPath, std::ios::binary);
   if (!in) {
     throw std::runtime_error("[loadPublicKey] Failed to open public key file.");
   }
   std::string str((std::istreambuf_iterator<char>(in)),
                   std::istreambuf_iterator<char>());
-  return deserializePublicKey(ctx, str);
+  return deserializePublicKey(str);
 }
 
-PrivateKey<DCRTPoly> loadSecretKey(CryptoContext<DCRTPoly> ctx) {
+PrivateKey<DCRTPoly> loadSecretKey() {
   std::ifstream in(kSecKeyPath, std::ios::binary);
   if (!in) {
     throw std::runtime_error("[loadSecretKey] Failed to open secret key file.");
   }
   std::string str((std::istreambuf_iterator<char>(in)),
                   std::istreambuf_iterator<char>());
-  return deserializeSecretKey(ctx, str);
+  return deserializeSecretKey(str);
 }
 
 } // namespace hermes::crypto

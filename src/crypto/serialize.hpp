@@ -37,11 +37,9 @@ std::string
 serializeSecretKey(const lbcrypto::PrivateKey<lbcrypto::DCRTPoly> &sk);
 
 lbcrypto::PublicKey<lbcrypto::DCRTPoly>
-deserializePublicKey(const lbcrypto::CryptoContext<lbcrypto::DCRTPoly> &ctx,
-                     const std::string &data);
+deserializePublicKey(const std::string &data);
 
 lbcrypto::PrivateKey<lbcrypto::DCRTPoly>
-deserializeSecretKey(const lbcrypto::CryptoContext<lbcrypto::DCRTPoly> &ctx,
-                     const std::string &data);
+deserializeSecretKey(const std::string &data);
 
 } // namespace hermes::crypto

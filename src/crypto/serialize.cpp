@@ -52,16 +52,14 @@ std::string serializeSecretKey(const PrivateKey<DCRTPoly> &sk) {
   return oss.str();
 }
 
-PublicKey<DCRTPoly> deserializePublicKey(const CryptoContext<DCRTPoly> &ctx,
-                                         const std::string &s) {
+PublicKey<DCRTPoly> deserializePublicKey(const std::string &s) {
   std::istringstream iss(s);
   PublicKey<DCRTPoly> pk;
   Serial::Deserialize(pk, iss, SerType::BINARY);
   return pk;
 }
 
-PrivateKey<DCRTPoly> deserializeSecretKey(const CryptoContext<DCRTPoly> &ctx,
-                                          const std::string &s) {
+PrivateKey<DCRTPoly> deserializeSecretKey(const std::string &s) {
   std::istringstream iss(s);
   PrivateKey<DCRTPoly> sk;
   Serial::Deserialize(sk, iss, SerType::BINARY);

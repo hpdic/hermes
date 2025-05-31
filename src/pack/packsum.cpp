@@ -81,8 +81,11 @@ extern "C" char *HERMES_PACK_GROUP_SUM(UDF_INIT *initid, UDF_ARGS *, char *,
 
   auto *state = reinterpret_cast<SumState *>(initid->ptr);
   auto ctx = makeBfvContext();
-  auto pk = loadPublicKey(ctx);
+  auto pk = loadPublicKey();
   std::vector<int64_t> v = {state->sum};
+  // DEBUG: 
+  std::cerr << "[DEBUG] Group sum: " << state->sum << std::endl;                                  
+
   auto pt = ctx->MakePackedPlaintext(v);
   auto ct = encrypt(ctx, pk, pt);
 

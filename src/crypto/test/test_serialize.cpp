@@ -73,8 +73,8 @@ int main() {
 
   // 4. Re-initialize context and deserialize all
   auto ctx2 = makeBfvContext();
-  auto pk2 = deserializePublicKey(ctx2, readFromFile(pkPath));
-  auto sk2 = deserializeSecretKey(ctx2, readFromFile(skPath));
+  auto pk2 = deserializePublicKey(readFromFile(pkPath));
+  auto sk2 = deserializeSecretKey(readFromFile(skPath));
   auto ct2 = deserializeCiphertext(readFromFile(ctPath));
   std::cout << "[4] Context and keys deserialized." << std::endl;
 

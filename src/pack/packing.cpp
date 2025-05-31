@@ -161,7 +161,7 @@ extern "C" char *HERMES_DEC_VECTOR_BFV(UDF_INIT *initid, UDF_ARGS *args,
     }    
     
     auto ctx = hermes::crypto::makeBfvContext();
-    auto sk = loadSecretKey(ctx);
+    auto sk = loadSecretKey();
     auto ct = hermes::crypto::deserializeCiphertext(decoded);
     Plaintext pt;
     ctx->Decrypt(sk, ct, &pt);
@@ -298,8 +298,8 @@ extern "C" char *HERMES_PACK_CONVERT(UDF_INIT *initid, UDF_ARGS *args,
 
   // Encrypt
   auto ctx = makeBfvContext();
-  auto pk = loadPublicKey(ctx);
-  auto sk = loadSecretKey(ctx);
+  auto pk = loadPublicKey();
+  auto sk = loadSecretKey();
 
   std::vector<int64_t> packed_values;
   packed_values.push_back(

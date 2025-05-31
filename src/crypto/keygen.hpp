@@ -39,7 +39,7 @@ KeyPair<DCRTPoly> generateKeypair(CryptoContext<DCRTPoly> context);
 // Generate a keypair and write to /tmp/hermes/ directory
 KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context);
 
-PublicKey<DCRTPoly> loadPublicKey(CryptoContext<DCRTPoly> context);
-PrivateKey<DCRTPoly> loadSecretKey(CryptoContext<DCRTPoly> context);
+PublicKey<DCRTPoly> loadPublicKey();
+PrivateKey<DCRTPoly> loadSecretKey();
 
 } // namespace hermes::crypto
