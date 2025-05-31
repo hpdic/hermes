@@ -161,19 +161,7 @@ extern "C" char *HERMES_DEC_VECTOR_BFV(UDF_INIT *initid, UDF_ARGS *args,
     }    
     
     auto ctx = hermes::crypto::makeBfvContext();
-
-    std::ifstream skf(kSecKeyPath, std::ios::binary);
-    if (!skf) {
-      std::cerr << "[UDF] Failed to open secret key at " << kSecKeyPath << std::endl;
-      *is_null = 1;
-      *error = 1;
-      return nullptr;
-    }
-    std::string sk_str((std::istreambuf_iterator<char>(skf)),
-                       std::istreambuf_iterator<char>());
-    auto sk = hermes::crypto::deserializeSecretKey(ctx, sk_str);
-    std::cerr << "[UDF] Secret key loaded." << std::endl;
-
+    auto sk = loadSecretKey(ctx);
     auto ct = hermes::crypto::deserializeCiphertext(decoded);
     Plaintext pt;
     ctx->Decrypt(sk, ct, &pt);

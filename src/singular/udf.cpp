@@ -51,6 +51,8 @@ using hermes::crypto::loadPublicKey;
 using hermes::crypto::loadSecretKey;
 using hermes::crypto::makeBfvContext;
 using hermes::crypto::serializeCiphertext;
+using hermes::crypto::kPubKeyPath;
+using hermes::crypto::kSecKeyPath;
 
 extern "C" {
 
@@ -101,7 +103,22 @@ long long HERMES_DEC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *is_null,
   try {
     std::string ct_str(args->args[0], args->lengths[0]);
     auto ctx = makeBfvContext();
+
     auto sk = loadSecretKey(ctx);
+    // std::ifstream skf(kSecKeyPath, std::ios::binary);
+    // if (!skf) {
+    //   std::cerr << "[UDF] Failed to open secret key at " << kSecKeyPath
+    //             << std::endl;
+    //   *is_null = 1;
+    //   *err = 1;
+    //   return -1;
+    // }
+    // std::string sk_str((std::istreambuf_iterator<char>(skf)),
+    //                    std::istreambuf_iterator<char>());
+    // auto sk = hermes::crypto::deserializeSecretKey(ctx, sk_str);
+    // std::cerr << "[UDF] Secret key loaded." << std::endl;
+    
+    
     auto ct = deserializeCiphertext(decodeBase64(ct_str));
     Plaintext pt;
     ctx->Decrypt(sk, ct, &pt);
