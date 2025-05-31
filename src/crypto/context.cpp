@@ -65,4 +65,9 @@ CryptoContext<DCRTPoly> makeBfvContext() {
   return cc;
 }
 
+CryptoContext<DCRTPoly> getGC() {
+  static CryptoContext<DCRTPoly> global_ctx = makeBfvContext();
+  return global_ctx;
+}
+
 }
