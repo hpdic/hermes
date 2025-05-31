@@ -1,15 +1,48 @@
 #!/bin/bash
 #
-# File: run_pack.sh
-# ------------------------------------------------------------
-# HERMES Packing UDF Test Script
-# This script sets up a realistic employee table,
-# invokes the HERMES_PACK_CONVERT() aggregate UDF,
-# and displays a truncated preview of the encrypted output.
+# File: script/run_pack.sh
+# --------------------------------------------------------------------
+# HERMES End-to-End Test Script for Encrypted Packing and Aggregation
 #
-# Author: Dongfang Zhao (dzhao@cs.washington.edu)
-# Institution: University of Washington
-# Last Updated: May 29, 2025
+# FUNCTIONALITY:
+# --------------------------------------------------------------------
+# This script performs a full test of HERMES's encrypted packing and
+# aggregation capabilities over a realistic employee salary table.
+#
+# Specifically, it exercises:
+#
+# 1. HERMES_PACK_CONVERT:
+#    - Packs all salaries in each department into a ciphertext.
+#
+# 2. HERMES_DEC_VECTOR_BFV:
+#    - Decrypts the packed vector to verify correct packing.
+#
+# 3. HERMES_PACK_GROUP_SUM:
+#    - Computes encrypted local sum of salaries per department using BFV.
+#
+# 4. HERMES_DEC_SINGULAR:
+#    - Decrypts scalar ciphertexts produced by group sums.
+#
+# 5. HERMES_PACK_GLOBAL_SUM:
+#    - Aggregates the local sum ciphertexts into a global encrypted total.
+#
+# USAGE NOTES:
+# --------------------------------------------------------------------
+# - All UDFs must be pre-registered and implemented within the *same*
+#   shared object (.so) file due to OpenFHE context compatibility issues.
+#
+# - This script writes diagnostic markers to MySQL error log for traceability.
+# - Sample employee records are inserted and grouped by `dept`.
+#
+# DEPENDENCIES:
+#   - MySQL UDFs from the HERMES project
+#   - OpenFHE v1.2.4 runtime
+#   - MySQL server with access to hpdic_db and user: hpdic / password: hpdic2023
+#
+# AUTHOR:
+#   Dongfang Zhao (dzhao@cs.washington.edu)
+#   University of Washington
+#   Last Updated: May 31, 2025
 
 set -euo pipefail
 
@@ -94,7 +127,7 @@ EOF
 
 echo "[+] Inserted encrypted local sums into 'packed_sums'."
 
-# 可选预览：解密查看每组 local sum 的明文
+# Optional: Decrypt and check each group's local sum in plaintext
 echo "[*] Decrypting local group sums..."
 $MYSQL -e "
 SELECT dept,
@@ -116,9 +149,9 @@ EOF
 
 echo "[+] Computed global ciphertext sum."
 
-# 解密 global sum
+# Decrypt global sum
 echo "[*] Decrypting global sum..."
 $MYSQL -e "
-SELECT CAST(HERMES_DEC_VECTOR_BFV(result_ct) AS CHAR) AS global_sum
+SELECT CAST(HERMES_DEC_SINGULAR(result_ct) AS CHAR) AS global_sum
 FROM global_sum;
 "

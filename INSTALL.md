@@ -11,7 +11,7 @@ Ensure the following dependencies are installed:
 ### Required Packages
 
 - **MySQL Server (>= 8.0)**
-- **OpenFHE (>= v1.1.1)** with BFV scheme support
+- **OpenFHE (>= v1.2.4)** with BFV scheme support
 - **CMake (>= 3.10)**
 - **g++ (>= 9.4)** or any C++17-compatible compiler
 - **libmysqlclient-dev**
@@ -33,6 +33,25 @@ All testing is performed using the following fork:
 👉 <https://github.com/hpdic/openfhe-development>
 
 ⚠️ Compatibility with upstream OpenFHE is **not guaranteed** due to possible API differences.
+
+---
+
+## ⚠️ Plugin Boundary Warning
+
+Hermes uses OpenFHE’s `CryptoContext` to encrypt and decrypt data. **Contexts created independently across different `.so` plugin files are not guaranteed to be compatible**, even if the same parameters are used.
+
+This is because OpenFHE injects implicit randomness into:
+- Modulus chain construction
+- Key switching matrix generation
+- Plaintext encoding infrastructure
+
+As a result:
+
+- ✅ **Encryption and decryption will succeed** if performed inside the *same shared object (.so)*.
+- ❌ **Cross-plugin decryption will fail silently or return `NULL`**, even if both plugins call the same `makeBfvContext()`.
+
+To ensure correctness:
+> **Always pair encryption and decryption logic within the same `.so` file.**
 
 ---
 
@@ -79,8 +98,13 @@ sudo ldconfig
 | `HERMES_SUM_BFV(ciphertext)` | Aggregate ciphertexts over SQL groups and return decrypted sum |
 | `HERMES_MUL_SCALAR_BFV(ciphertext, scalar)` | Multiply ciphertext by a plaintext scalar |
 | `HERMES_MUL_BFV(ciphertext1, ciphertext2)` | Multiply two ciphertexts homomorphically |
+| `HERMES_PACK_CONVERT(val)` | Pack values into a ciphertext vector (aggregate) |
+| `HERMES_DEC_VECTOR_BFV(ct)` | Decrypt and return vector plaintext as CSV |
+| `HERMES_PACK_GROUP_SUM(val)` | Compute encrypted scalar sum within group (aggregate) |
+| `HERMES_PACK_GLOBAL_SUM(ct)` | Sum local encrypted group aggregates homomorphically |
+| `HERMES_DEC_SINGULAR(ct)` | Decrypt scalar ciphertext (internal SO-safe only) |
 
-Fully compatible with standard SQL pipelines such as `SELECT`, `GROUP BY`, and joins.
+All functions are designed to work within standard SQL pipelines including `GROUP BY`, `JOIN`, and nested queries.
 
 ---
 
@@ -116,7 +140,7 @@ sudo tail -n 100 /var/log/mysql/error.log
 Typical causes:
 - Invalid modulus
 - Memory exhaustion
-- Mislinked plugin
+- Cross-plugin `CryptoContext` mismatch
 
 ---
 
