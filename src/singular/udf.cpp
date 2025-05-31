@@ -1,42 +1,32 @@
 /*
  * File: src/singular/udf.cpp
  * ------------------------------------------------------------------------
- * HERMES MySQL UDF Plugin — Homomorphic SQL Computation with OpenFHE (BFV)
+ * HERMES MySQL UDF Plugin (BFV, Scalar Mode — Rewritten with Pack
+ * Infrastructure)
  *
- * This file defines MySQL user-defined functions (UDFs) that enable SQL queries
- * to operate directly on encrypted integers using the BFV scheme in OpenFHE.
- * It serves as a lightweight runtime layer to support encrypted computation in
- * standard MySQL environments via dynamically loadable plugin functions.
+ * This file defines MySQL user-defined functions (UDFs) that perform
+ * homomorphic operations on singular (scalar) integers encrypted under the
+ * OpenFHE BFV scheme. It has been refactored to use the shared context/key
+ * infrastructure from the `hermes::crypto` module to ensure consistent
+ * encryption semantics across plugins.
  *
- * Main Capabilities:
- *   - Encrypt plaintext integers from SQL inputs (HERMES_ENC_SINGULAR_BFV)
- *   - Decrypt ciphertexts back to integers (HERMES_DEC_SINGULAR_BFV)
- *   - Homomorphic addition via GROUP BY aggregation (HERMES_SUM_BFV)
- *   - Ciphertext-ciphertext multiplication (HERMES_MUL_BFV)
- *   - Scalar multiplication with plaintext integers (HERMES_MUL_SCALAR_BFV)
+ * Key Changes in This Version:
+ *   - Uses `makeBfvContext()` from `hermes::crypto::context.cpp`
+ *   - Loads keys from filesystem paths (in `tmp/hermes/`) instead of generating
+ * fresh ones
+ *   - Ciphertext and key serialization handled by centralized helpers
+ *   - Uses packed plaintexts of length 1 for scalar encryption
  *
  * Plugin Functions:
- *   - char* HERMES_ENC_SINGULAR_BFV(int input)
- *   - long long HERMES_DEC_SINGULAR_BFV(base64 ciphertext)
- *   - long long HERMES_SUM_BFV(base64 ciphertexts...)
- *   - char* HERMES_MUL_BFV(base64 ct1, base64 ct2)
- *   - char* HERMES_MUL_SCALAR_BFV(base64 ct, scalar)
- *
- * Implementation Notes:
- *   - Uses OpenFHE’s BFV scheme with fixed plaintext modulus (268,369,921)
- *   - Keys and context are instantiated once and globally shared
- *   - Ciphertexts are serialized in OpenFHE binary format + Base64 encoded
- *   - No packing or batching: each ciphertext holds one integer
- *   - Maximum return size = 65535 bytes (MySQL UDF string cap)
- *
- * Limitations:
- *   - Not multi-tenant or thread-safe
- *   - Keys are ephemeral; not persisted across restarts
- *   - Only integer payloads supported; no vector packing or rotation
+ *   - char*      HERMES_ENC_SINGULAR_BFV(int plaintext)
+ *   - long long  HERMES_DEC_SINGULAR_BFV(base64 ciphertext)
+ *   - long long  HERMES_SUM_BFV(base64 ciphertexts...)     (Aggregate)
+ *   - char*      HERMES_MUL_BFV(base64 ct1, base64 ct2)
+ *   - char*      HERMES_MUL_SCALAR_BFV(base64 ct, scalar)
  *
  * Author: Dongfang Zhao (dzhao@cs.washington.edu)
  * Institution: University of Washington (HPDIC Lab)
- * Last Updated: May 30, 2025
+ * Last Updated: May 31, 2025
  */
 
 #include <cstring>
@@ -46,88 +36,93 @@
 #include <string>
 #include <vector>
 
-#include "openfhe.h"
 #include "base64.hpp"
-
-using hermes::crypto::decodeBase64;
-using hermes::crypto::encodeBase64;
+#include "context.hpp"
+#include "decrypt.hpp"
+#include "encrypt.hpp"
+#include "keygen.hpp"
+#include "serialize.hpp"
 
 using namespace lbcrypto;
-
-struct HermesSumContext {
-  Ciphertext<DCRTPoly> acc;
-  bool initialized = false;
-};
-
-CryptoContext<DCRTPoly> &get_context() {
-  static CryptoContext<DCRTPoly> ctx = [] {
-    CCParams<CryptoContextBFVRNS> p;
-
-    /**
-     * ======================= Plaintext Modulus Notes ========================
-     *
-     * OpenFHE's BFV scheme uses a cyclotomic polynomial ring of order m,
-     * where m is typically a power of 2. If not explicitly set, OpenFHE
-     * defaults to:
-     *
-     *     m = 2^14 = 16384
-     *
-     * To ensure encoding succeeds, the plaintext modulus p must satisfy:
-     *
-     *     (p - 1) % m == 0     i.e.,   p ≡ 1 mod m
-     *
-     * If this condition is not met, OpenFHE will throw runtime exceptions:
-     *
-     *     SetParams_2n(): The modulus value must be prime.
-     *     RootOfUnity(): The modulus and ring dimension must be compatible.
-     *
-     * The value 268,369,921 is a safe prime satisfying:
-     *
-     *     268,369,921 ≡ 1 mod 16384
-     *
-     * This supports signed plaintext integers up to approximately ±134 million.
-     *
-     * ⚠️  If you change the ring dimension m, you must select a new p such
-     *     that p ≡ 1 mod m.
-     */
-    p.SetPlaintextModulus(268369921); // safe default for m = 16384
-
-    p.SetMultiplicativeDepth(2);
-    auto c = GenCryptoContext(p);
-    c->Enable(PKE);
-    c->Enable(LEVELEDSHE);
-    c->Enable(ADVANCEDSHE);
-    return c;
-  }();
-  return ctx;
-}
-
-KeyPair<DCRTPoly> &get_keypair() {
-  static KeyPair<DCRTPoly> kp = [] {
-    auto &ctx = get_context();
-    auto k = ctx->KeyGen();
-    ctx->EvalMultKeyGen(k.secretKey);
-    ctx->EvalSumKeyGen(k.secretKey);
-    return k;
-  }();
-  return kp;
-}
+using hermes::crypto::decodeBase64;
+using hermes::crypto::deserializeCiphertext;
+using hermes::crypto::encodeBase64;
+using hermes::crypto::loadPublicKey;
+using hermes::crypto::loadSecretKey;
+using hermes::crypto::makeBfvContext;
+using hermes::crypto::serializeCiphertext;
 
 extern "C" {
 
+// ------------------- ENCRYPT -------------------
+
+bool HERMES_ENC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 1 || args->arg_type[0] != INT_RESULT) {
+    std::strcpy(msg, "HERMES_ENC_SINGULAR_BFV requires one integer.");
+    return 1;
+  }
+  initid->maybe_null = 1;
+  initid->max_length = 65535;
+  return 0;
+}
+
+char *HERMES_ENC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
+                              unsigned long *len, char *is_null, char *err) {
+  try {
+    int64_t val = *reinterpret_cast<long long *>(args->args[0]);
+    auto ctx = makeBfvContext();
+    auto pk = loadPublicKey(ctx);
+    auto pt = ctx->MakePackedPlaintext({val});
+    pt->SetLength(1);
+    auto ct = ctx->Encrypt(pk, pt);
+    std::string encoded = encodeBase64(serializeCiphertext(ct));
+    *len = encoded.size();
+    return strdup(encoded.c_str());
+  } catch (...) {
+    *is_null = 1;
+    *err = 1;
+    return nullptr;
+  }
+}
+
+// ------------------- DECRYPT -------------------
+
+bool HERMES_DEC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT) {
+    std::strcpy(msg, "HERMES_DEC_SINGULAR_BFV requires one base64 string.");
+    return 1;
+  }
+  initid->maybe_null = 1;
+  return 0;
+}
+
+long long HERMES_DEC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *is_null,
+                                  char *err) {
+  try {
+    std::string ct_str(args->args[0], args->lengths[0]);
+    auto ctx = makeBfvContext();
+    auto sk = loadSecretKey(ctx);
+    auto ct = deserializeCiphertext(decodeBase64(ct_str));
+    Plaintext pt;
+    ctx->Decrypt(sk, ct, &pt);
+    pt->SetLength(1);
+    auto v = pt->GetPackedValue();
+    return v.empty() ? 0 : v[0];
+  } catch (...) {
+    *is_null = 1;
+    *err = 1;
+    return 0;
+  }
+}
+
+// ------------------- SCALAR MULTIPLY -------------------
+
 bool HERMES_MUL_SCALAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
   if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT) {
-    std::strcpy(msg, "HERMES_MUL_SCALAR_BFV(ciphertext, scalar) expects "
-                     "(base64 string, scalar)");
+    std::strcpy(
+        msg, "HERMES_MUL_SCALAR_BFV(ciphertext, scalar) expects (string, int)");
     return 1;
   }
-
-  if (args->arg_type[1] != INT_RESULT && args->arg_type[1] != STRING_RESULT &&
-      args->arg_type[1] != REAL_RESULT) {
-    std::strcpy(msg, "Second argument must be INT, STRING, or DOUBLE");
-    return 1;
-  }
-
   initid->maybe_null = 1;
   initid->max_length = 65535;
   return 0;
@@ -136,63 +131,24 @@ bool HERMES_MUL_SCALAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_MUL_SCALAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
                             unsigned long *length, char *is_null, char *error) {
   try {
-    if (!args->args[0] || !args->args[1]) {
-      *is_null = 1;
-      return nullptr;
-    }
-
-    // Deserialize ciphertext
-    std::string encoded(args->args[0], args->lengths[0]);
-    std::string decoded = decodeBase64(encoded);
-    std::stringstream ss(decoded);
-    Ciphertext<DCRTPoly> ct;
-    Serial::Deserialize(ct, ss, SerType::BINARY);
-
-    // Parse scalar
-    int64_t scalar = 0;
-    if (args->arg_type[1] == INT_RESULT) {
-      scalar = *reinterpret_cast<long long *>(args->args[1]);
-    } else if (args->arg_type[1] == REAL_RESULT) {
-      scalar = static_cast<int64_t>(*reinterpret_cast<double *>(args->args[1]));
-    } else {
-      std::string scalar_str(args->args[1], args->lengths[1]);
-      scalar = std::stoll(scalar_str);
-    }
-
-    // Construct scalar plaintext and multiply
-    Plaintext ptScalar = get_context()->MakePackedPlaintext({scalar});
-    auto result = get_context()->EvalMult(ct, ptScalar);
-
-    // Serialize result
-    std::stringstream out;
-    Serial::Serialize(result, out, SerType::BINARY);
-    std::string reencoded = encodeBase64(out.str());
-
-    char *ret = new char[reencoded.size() + 1];
-    std::memcpy(ret, reencoded.data(), reencoded.size());
-    ret[reencoded.size()] = '\0';
-
-    *length = reencoded.size();
-    *is_null = 0;
-    *error = 0;
-    return ret;
-
-  } catch (const std::exception &e) {
-    std::cerr << "[HERMES_MUL_SCALAR_BFV] exception: " << e.what() << std::endl;
-    *is_null = 1;
-    *error = 1;
-    return nullptr;
+    auto ctx = makeBfvContext();
+    std::string ct_str(args->args[0], args->lengths[0]);
+    Ciphertext<DCRTPoly> ct = deserializeCiphertext(decodeBase64(ct_str));
+    int64_t scalar = std::stoll(std::string(args->args[1], args->lengths[1]));
+    auto pt = ctx->MakePackedPlaintext({scalar});
+    pt->SetLength(1);
+    auto ct_res = ctx->EvalMult(ct, pt);
+    std::string encoded = encodeBase64(serializeCiphertext(ct_res));
+    *length = encoded.size();
+    return strdup(encoded.c_str());
   } catch (...) {
-    std::cerr << "[HERMES_MUL_SCALAR_BFV] unknown exception" << std::endl;
     *is_null = 1;
     *error = 1;
     return nullptr;
   }
 }
 
-void HERMES_MUL_SCALAR_BFV_deinit(UDF_INIT *) {
-  // No cleanup needed
-}
+// ------------------- CIPHERTEXT MULTIPLY -------------------
 
 bool HERMES_MUL_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
   if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT ||
@@ -208,30 +164,14 @@ bool HERMES_MUL_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_MUL_BFV(UDF_INIT *, UDF_ARGS *args, char *, unsigned long *len,
                      char *is_null, char *error) {
   try {
-    if (!args->args[0] || !args->args[1]) {
-      *is_null = 1;
-      return nullptr;
-    }
-
-    // Deserialize both ciphertexts
-    std::string a_str(args->args[0], args->lengths[0]);
-    std::string b_str(args->args[1], args->lengths[1]);
-    std::stringstream sa(decodeBase64(a_str)), sb(decodeBase64(b_str));
-    Ciphertext<DCRTPoly> ca, cb;
-    Serial::Deserialize(ca, sa, SerType::BINARY);
-    Serial::Deserialize(cb, sb, SerType::BINARY);
-
-    // Perform EvalMult
-    auto ctxt_mul = get_context()->EvalMult(ca, cb);
-
-    // Re-encode and return
-    std::stringstream sout;
-    Serial::Serialize(ctxt_mul, sout, SerType::BINARY);
-    std::string encoded = encodeBase64(sout.str());
-
+    auto ctx = makeBfvContext();
+    std::string ct1_str(args->args[0], args->lengths[0]);
+    std::string ct2_str(args->args[1], args->lengths[1]);
+    auto ct1 = deserializeCiphertext(decodeBase64(ct1_str));
+    auto ct2 = deserializeCiphertext(decodeBase64(ct2_str));
+    auto result = ctx->EvalMult(ct1, ct2);
+    std::string encoded = encodeBase64(serializeCiphertext(result));
     *len = encoded.size();
-    *is_null = 0;
-    *error = 0;
     return strdup(encoded.c_str());
   } catch (...) {
     *is_null = 1;
@@ -240,7 +180,12 @@ char *HERMES_MUL_BFV(UDF_INIT *, UDF_ARGS *args, char *, unsigned long *len,
   }
 }
 
-void HERMES_MUL_BFV_deinit(UDF_INIT *) {}  
+// ------------------- SUM (Aggregate) -------------------
+
+struct HermesSumContext {
+  Ciphertext<DCRTPoly> acc;
+  bool initialized = false;
+};
 
 bool HERMES_SUM_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
   if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT) {
@@ -255,16 +200,17 @@ bool HERMES_SUM_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 bool HERMES_SUM_BFV_add(UDF_INIT *initid, UDF_ARGS *args, char *is_null,
                         char *err) {
   try {
-    if (!args->args[0])
-      return 0;
-    std::string bin(args->args[0], args->lengths[0]);
-    std::string decoded = decodeBase64(bin);
-    std::stringstream ss(decoded);
-    Ciphertext<DCRTPoly> ct;
-    Serial::Deserialize(ct, ss, SerType::BINARY);
-    auto *ctx = reinterpret_cast<HermesSumContext *>(initid->ptr);
-    ctx->acc = ctx->initialized ? get_context()->EvalAdd(ctx->acc, ct) : ct;
-    ctx->initialized = true;
+    auto ctx = makeBfvContext();
+    HermesSumContext *sumctx =
+        reinterpret_cast<HermesSumContext *>(initid->ptr);
+    std::string ct_str(args->args[0], args->lengths[0]);
+    auto ct = deserializeCiphertext(decodeBase64(ct_str));
+    if (!sumctx->initialized) {
+      sumctx->acc = ct;
+      sumctx->initialized = true;
+    } else {
+      sumctx->acc = ctx->EvalAdd(sumctx->acc, ct);
+    }
     return 0;
   } catch (...) {
     *is_null = 1;
@@ -276,13 +222,16 @@ bool HERMES_SUM_BFV_add(UDF_INIT *initid, UDF_ARGS *args, char *is_null,
 long long HERMES_SUM_BFV(UDF_INIT *initid, UDF_ARGS *, char *is_null,
                          char *err) {
   try {
-    auto *ctx = reinterpret_cast<HermesSumContext *>(initid->ptr);
-    if (!ctx->initialized) {
+    HermesSumContext *sumctx =
+        reinterpret_cast<HermesSumContext *>(initid->ptr);
+    if (!sumctx->initialized) {
       *is_null = 1;
       return 0;
     }
+    auto ctx = makeBfvContext();
+    auto sk = loadSecretKey(ctx);
     Plaintext pt;
-    get_context()->Decrypt(get_keypair().secretKey, ctx->acc, &pt);
+    ctx->Decrypt(sk, sumctx->acc, &pt);
     pt->SetLength(1);
     auto v = pt->GetPackedValue();
     return v.empty() ? 0 : v[0];
@@ -294,7 +243,8 @@ long long HERMES_SUM_BFV(UDF_INIT *initid, UDF_ARGS *, char *is_null,
 }
 
 void HERMES_SUM_BFV_clear(UDF_INIT *initid, char *, char *) {
-  reinterpret_cast<HermesSumContext *>(initid->ptr)->initialized = false;
+  auto *ctx = reinterpret_cast<HermesSumContext *>(initid->ptr);
+  ctx->initialized = false;
 }
 bool HERMES_SUM_BFV_reset(UDF_INIT *initid, UDF_ARGS *args, char *n, char *e) {
   HERMES_SUM_BFV_clear(initid, n, e);
@@ -303,77 +253,5 @@ bool HERMES_SUM_BFV_reset(UDF_INIT *initid, UDF_ARGS *args, char *n, char *e) {
 void HERMES_SUM_BFV_deinit(UDF_INIT *initid) {
   delete reinterpret_cast<HermesSumContext *>(initid->ptr);
 }
-
-bool HERMES_DEC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
-  if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT) {
-    std::strcpy(msg, "HERMES_DEC_SINGULAR_BFV requires one base64 string.");
-    return 1;
-  }
-  initid->maybe_null = 1;
-  return 0;
-}
-
-long long HERMES_DEC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *is_null,
-                                  char *err) {
-  try {
-    if (!args->args[0]) {
-      *is_null = 1;
-      return 0;
-    }
-    std::string bin(args->args[0], args->lengths[0]);
-    std::string decoded = decodeBase64(bin);
-    std::stringstream ss(decoded);
-    Ciphertext<DCRTPoly> ct;
-    Serial::Deserialize(ct, ss, SerType::BINARY);
-    Plaintext pt;
-    get_context()->Decrypt(get_keypair().secretKey, ct, &pt);
-    pt->SetLength(1);
-    auto v = pt->GetPackedValue();
-    return v.empty() ? 0 : v[0];
-  } catch (...) {
-    *is_null = 1;
-    *err = 1;
-    return 0;
-  }
-}
-
-void HERMES_DEC_SINGULAR_BFV_deinit(UDF_INIT *) {}
-
-bool HERMES_ENC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
-  if (args->arg_count != 1 || args->arg_type[0] != INT_RESULT) {
-    std::strcpy(msg, "HERMES_ENC_SINGULAR_BFV requires one integer.");
-    return 1;
-  }
-  initid->maybe_null = 1;
-  initid->max_length = 65535;
-  return 0;
-}
-
-char *HERMES_ENC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
-                              unsigned long *len, char *is_null, char *err) {
-  try {
-    if (!args->args[0]) {
-      *is_null = 1;
-      return nullptr;
-    }
-    int64_t val = *reinterpret_cast<long long *>(args->args[0]);
-    auto pt = get_context()->MakePackedPlaintext({val});
-    pt->SetLength(1);
-    auto ct = get_context()->Encrypt(get_keypair().publicKey, pt);
-    std::stringstream ss;
-    Serial::Serialize(ct, ss, SerType::BINARY);
-    std::string encoded = encodeBase64(ss.str());
-    *len = encoded.size();
-    *is_null = 0;
-    *err = 0;
-    return strdup(encoded.c_str());
-  } catch (...) {
-    *is_null = 1;
-    *err = 1;
-    return nullptr;
-  }
-}
-
-void HERMES_ENC_SINGULAR_BFV_deinit(UDF_INIT *) {}
 
 } // extern "C"

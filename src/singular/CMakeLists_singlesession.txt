@@ -4,6 +4,9 @@ project(hermes_singular_udf)
 # Build the singular UDF plugin as a shared library
 add_library(hermes_singular_udf SHARED
     udf.cpp
+    ../crypto/base64.cpp
+    ../crypto/context.cpp
+    ../crypto/serialize.cpp
 )
 
 # Include directories
@@ -13,7 +16,7 @@ target_include_directories(hermes_singular_udf PRIVATE
     /usr/local/include/openfhe/core
     /usr/local/include/openfhe/pke
     /usr/local/include/openfhe/binfhe
-    ${CMAKE_CURRENT_SOURCE_DIR}/../crypto
+    ../crypto  # to access shared headers
 )
 
 # Link libraries
@@ -24,10 +27,7 @@ target_link_libraries(hermes_singular_udf
     OPENFHEcore
     OPENFHEpke
     OPENFHEbinfhe
-    crypto
 )
 
-# Set output name
-set_target_properties(hermes_singular_udf PROPERTIES
-    OUTPUT_NAME "hermes_singular_udf"
-)
+# Output name
+set_target_properties(hermes_singular_udf PROPERTIES OUTPUT_NAME "hermes_singular_udf")
