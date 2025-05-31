@@ -98,7 +98,7 @@ echo "[+] Inserted encrypted local sums into 'packed_sums'."
 echo "[*] Decrypting local group sums..."
 $MYSQL -e "
 SELECT dept,
-       CAST(HERMES_DEC_SINGULAR_BFV(local_sum_ct) AS CHAR) AS local_sum
+       CAST(HERMES_DEC_SINGULAR(local_sum_ct) AS CHAR) AS local_sum
 FROM packed_sums;
 "
 

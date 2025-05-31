@@ -51,10 +51,14 @@ CryptoContext<DCRTPoly> makeBfvContext() {
   params.SetSecurityLevel(HEStd_128_classic);
   params.SetMultiplicativeDepth(2);
 
+  // params.SetRingDim(16384); // matching plaintext modulus
+  // params.SetScalingModSize(59);
+  // params.SetBatchSize(8192);     // seed 可自定义
+
   CryptoContext<DCRTPoly> cc = GenCryptoContext(params);
 
   cc->Enable(PKESchemeFeature::PKE);
-  cc->Enable(PKESchemeFeature::KEYSWITCH);
+  // cc->Enable(PKESchemeFeature::KEYSWITCH);
   cc->Enable(PKESchemeFeature::LEVELEDSHE);
   cc->Enable(PKESchemeFeature::ADVANCEDSHE);
 

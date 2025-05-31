@@ -83,15 +83,32 @@ extern "C" char *HERMES_PACK_GROUP_SUM(UDF_INIT *initid, UDF_ARGS *, char *,
   auto ctx = makeBfvContext();
   auto pk = loadPublicKey();
   std::vector<int64_t> v = {state->sum};
-  // DEBUG: 
-  std::cerr << "[DEBUG] Group sum: " << state->sum << std::endl;                                  
+
+  // DEBUG
+  // std::cerr << "[DEBUG] v = " << v << std::endl;                                  
 
   auto pt = ctx->MakePackedPlaintext(v);
-  auto ct = encrypt(ctx, pk, pt);
+  pt->SetLength(1);
 
-  buffer = encodeBase64(serializeCiphertext(ct));
-  *length = buffer.size();
-  return const_cast<char *>(buffer.c_str());
+  // auto ct = encrypt(ctx, pk, pt);
+  // buffer = encodeBase64(serializeCiphertext(ct));
+  // *length = buffer.size();
+  // return const_cast<char *>(buffer.c_str());
+
+  auto ct = ctx->Encrypt(pk, pt);
+  std::string encoded = encodeBase64(serializeCiphertext(ct));
+  *length = encoded.size();
+
+  auto serialized = serializeCiphertext(ct);
+  auto ct2 = deserializeCiphertext(serialized);
+  auto sk = loadSecretKey(); // 添加这个调试用
+  Plaintext decrypted;
+  ctx->Decrypt(sk, ct, &decrypted);
+  decrypted->SetLength(1);
+  std::cerr << "[DEBUG] roundtrip = " << decrypted->GetPackedValue()
+            << std::endl;
+
+  return strdup(encoded.c_str());
 }
 
 extern "C" void HERMES_PACK_GROUP_SUM_deinit(UDF_INIT *initid) {
@@ -162,4 +179,32 @@ extern "C" char *HERMES_PACK_GLOBAL_SUM(UDF_INIT *initid, UDF_ARGS *, char *,
 
 extern "C" void HERMES_PACK_GLOBAL_SUM_deinit(UDF_INIT *initid) {
   delete reinterpret_cast<CipherAccState *>(initid->ptr);
+}
+
+extern "C" bool HERMES_DEC_SINGULAR_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 1 || args->arg_type[0] != STRING_RESULT) {
+    std::strcpy(msg, "HERMES_DEC_SINGULAR requires one base64 string.");
+    return 1;
+  }
+  initid->maybe_null = 1;
+  return 0;
+}
+
+extern "C" long long HERMES_DEC_SINGULAR(UDF_INIT *, UDF_ARGS *args, char *is_null,
+                                  char *err) {
+  try {
+    std::string ct_str(args->args[0], args->lengths[0]);
+    auto ctx = makeBfvContext();
+    auto sk = loadSecretKey();
+    auto ct = deserializeCiphertext(decodeBase64(ct_str));
+    Plaintext pt;
+    ctx->Decrypt(sk, ct, &pt);
+    pt->SetLength(1);
+    auto v = pt->GetPackedValue();
+    return v.empty() ? 0 : v[0];
+  } catch (...) {
+    *is_null = 1;
+    *err = 1;
+    return 0;
+  }
 }
