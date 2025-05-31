@@ -310,23 +310,6 @@ extern "C" char *HERMES_PACK_CONVERT(UDF_INIT *initid, UDF_ARGS *args,
   auto pt = ctx->MakePackedPlaintext(packed_values);
   pt->SetLength(state->values.size());
   auto ct = encrypt(ctx, pk, pt);
-  // Serialize keys to disk (for debug/demo only)
-  std::ofstream pubout(kPubKeyPath, std::ios::binary);
-  if (!pubout.is_open()) {
-    std::cerr << "[ERROR] Failed to open public key file for writing.\n";
-  } else {
-    pubout << hermes::crypto::serializePublicKey(pk);
-    pubout.close();
-    std::cerr << "[INFO] Public key written successfully.\n";
-  }
-  std::ofstream secout(kSecKeyPath, std::ios::binary);
-  if (!secout.is_open()) {
-    std::cerr << "[ERROR] Failed to open secret key file for writing.\n";
-  } else {
-    secout << hermes::crypto::serializeSecretKey(sk);
-    secout.close();
-    std::cerr << "[INFO] Secret key written successfully.\n";
-  }
 
   // Serialize
   buffer = encodeBase64(serializeCiphertext(ct));

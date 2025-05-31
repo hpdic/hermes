@@ -13,10 +13,18 @@
 
 set -euo pipefail
 
-echo "[*] Running HERMES_PACK_CONVERT aggregation test..."
-
 export MYSQL_PWD="hpdic2023"
 MYSQL="mysql -u hpdic -D hpdic_db"
+
+# 0. Write start-of-test marker to MySQL error log
+TIMESTAMP=$(date "+%F %T")
+(
+  $MYSQL -e "
+  DO
+    SIGNAL SQLSTATE '45000'
+    SET MESSAGE_TEXT = '=== NEW HERMES PACK TEST @ ${TIMESTAMP} ===';
+  "
+) 2>/dev/null || true
 
 # 1. Create employee table
 $MYSQL <<EOF
