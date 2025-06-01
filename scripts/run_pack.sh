@@ -14,7 +14,7 @@
 # 1. HERMES_PACK_CONVERT:
 #    - Packs all salaries in each department into a ciphertext.
 #
-# 2. HERMES_DEC_VECTOR_BFV:
+# 2. HERMES_DEC_VECTOR:
 #    - Decrypts the packed vector to verify correct packing.
 #
 # 3. HERMES_PACK_GROUP_SUM:
@@ -163,4 +163,32 @@ echo "[*] Decrypting global sum..."
 $MYSQL -e "
 SELECT CAST(HERMES_DEC_SINGULAR(result_ct) AS CHAR) AS global_sum
 FROM global_sum;
+"
+
+# 8. In-place insertion of a new value into packed ciphertext
+echo "[*] Testing HERMES_PACK_ADD ..."
+
+# -- Perform three updates in-place:
+#    ① Update packed_ct by homomorphically inserting 9999 into slot[3]
+#    ② Update local_sum_ct via homomorphic ciphertext addition
+#    ③ Increment slot_count by 1
+$MYSQL -e "
+UPDATE packed_salaries
+SET
+  packed_ct = HERMES_PACK_ADD(packed_ct, 9999, 3),
+  local_sum_ct = HERMES_SUM_CIPHERS(local_sum_ct, HERMES_ENC_SINGULAR(9999)),
+  slot_count = slot_count + 1
+WHERE dept = 1;
+"
+
+# -- Decrypt and verify:
+#    - packed_ct should contain: 1000, 2000, 1500, 9999
+#    - local_sum_ct should equal: 14499
+$MYSQL -e "
+SELECT dept,
+       slot_count,
+       CAST(HERMES_DEC_VECTOR(packed_ct, slot_count) AS CHAR) AS updated_vector,
+       CAST(HERMES_DEC_SINGULAR(local_sum_ct) AS CHAR) AS updated_sum
+FROM packed_salaries
+WHERE dept = 1;
 "

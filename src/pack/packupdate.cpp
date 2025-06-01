@@ -126,13 +126,22 @@ char *HERMES_PACK_ADD(UDF_INIT *, UDF_ARGS *args, char *result,
     auto ct_updated = cc->EvalAdd(ct_old, ct_new);
     auto out = encodeBase64(serializeCiphertext(ct_updated));
 
-    std::memcpy(result, out.data(), out.size());
+    char *buf = static_cast<char *>(malloc(out.size()));
+    std::memcpy(buf, out.data(), out.size());
     *length = out.size();
-    return result;
-  } catch (...) {
+    return buf;
+  } 
+  catch (...) {
     *is_null = 1;
     *err = 1;
     return nullptr;
+  }
+}
+
+void HERMES_PACK_ADD_deinit(UDF_INIT *initid) {
+  if (initid->ptr) {
+    free(initid->ptr);
+    initid->ptr = nullptr;
   }
 }
 
@@ -215,6 +224,79 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
     *is_null = 1;
     *err = 1;
     return nullptr;
+  }
+}
+
+/*
+ * HERMES_SUM_CIPHERS
+ * ------------------------------------------------------------
+ * Scalar UDF: Performs homomorphic addition of two BFV ciphertexts.
+ *
+ * INPUT:
+ *   - Two base64-encoded ciphertext strings: (c1_base64, c2_base64)
+ *     Each string represents a serialized OpenFHE ciphertext encrypted
+ *     using the same context and public key.
+ *
+ * FUNCTIONALITY:
+ *   - Deserialize both ciphertexts.
+ *   - Compute EvalAdd(c1, c2) using OpenFHE BFV context.
+ *   - Return a base64-encoded string of the resulting ciphertext.
+ *
+ * AUTHOR:
+ *   Dongfang Zhao (dzhao@cs.washington.edu)
+ *   University of Washington
+ *   Last Updated: June 1, 2025
+ */
+
+bool HERMES_SUM_CIPHERS_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT ||
+      args->arg_type[1] != STRING_RESULT) {
+    std::strcpy(msg, "HERMES_SUM_CIPHERS expects two base64-encoded strings.");
+    return true;
+  }
+  initid->maybe_null = 1;
+  initid->max_length = 65535;
+  return false;
+}
+
+char *HERMES_SUM_CIPHERS(UDF_INIT *initid, UDF_ARGS *args, char *result,
+                         unsigned long *length, char *is_null, char *error) {
+  try {
+    std::string s1(args->args[0], args->lengths[0]);
+    std::string s2(args->args[1], args->lengths[1]);
+
+    auto cc = getGC();
+    auto ct1 = deserializeCiphertext(decodeBase64(s1));
+    auto ct2 = deserializeCiphertext(decodeBase64(s2));
+    auto ct_sum = cc->EvalAdd(ct1, ct2);
+
+    std::string encoded = encodeBase64(serializeCiphertext(ct_sum));
+
+    // ✅ Use heap allocation
+    char *out = static_cast<char *>(malloc(encoded.size() + 1));
+    if (!out) {
+      *is_null = 1;
+      *error = 1;
+      return nullptr;
+    }
+
+    std::memcpy(out, encoded.data(), encoded.size());
+    out[encoded.size()] = '\0';
+    *length = encoded.size();
+    initid->ptr = out; // track for deinit
+
+    return out;
+  } catch (...) {
+    *is_null = 1;
+    *error = 1;
+    return nullptr;
+  }
+}
+
+void HERMES_SUM_CIPHERS_deinit(UDF_INIT *initid) {
+  if (initid->ptr) {
+    free(initid->ptr);
+    initid->ptr = nullptr;
   }
 }
 

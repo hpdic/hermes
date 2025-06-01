@@ -1,76 +1,71 @@
 /*
  * File: src/pack/packsum.cpp
  * ------------------------------------------------------------
- * HERMES UDFs for encrypted scalar group sum, global sum, and context-bound
- * decryption.
+ * HERMES UDFs for scalar encryption, encrypted group sum,
+ * encrypted global sum, and local decryption (packed BFV).
  *
  * FUNCTIONALITY:
  * ------------------------------------------------------------
- * 1. HERMES_PACK_GROUP_SUM (Aggregate UDF)
+ * 1. HERMES_ENC_SINGULAR (Scalar UDF)
+ *    - Encrypts a single integer using OpenFHE's BFV scheme.
+ *    - Returns a base64-encoded ciphertext string.
+ *    - Encodes the integer into slot[0] of a packed plaintext;
+ *      all other slots are padded with zero.
+ *
+ * 2. HERMES_PACK_GROUP_SUM (Aggregate UDF)
  *    - Aggregates INT values per SQL GROUP BY.
- *    - Encrypts the resulting scalar sum using OpenFHE's BFV scheme.
- *    - Returns a base64-encoded ciphertext string representing the local sum.
+ *    - Encrypts the resulting scalar sum as a packed plaintext.
+ *    - Returns a base64-encoded ciphertext representing the local sum.
  *
- * 2. HERMES_PACK_GLOBAL_SUM (Aggregate UDF)
- *    - Aggregates base64 ciphertexts across groups (e.g., via GROUP_CONCAT).
- *    - Applies homomorphic addition over all encrypted group sums.
- *    - Returns a base64-encoded ciphertext string of the global total sum.
+ * 3. HERMES_PACK_GLOBAL_SUM (Aggregate UDF)
+ *    - Aggregates encrypted group sums across departments (or other groups).
+ *    - Performs homomorphic addition on ciphertexts.
+ *    - Returns a base64-encoded ciphertext of the total sum.
  *
- * 3. HERMES_DEC_SINGULAR (Scalar UDF)
+ * 4. HERMES_DEC_SINGULAR (Scalar UDF)
  *    - Decrypts a base64-encoded BFV ciphertext and returns the scalar integer.
- *    - **Must be invoked from within the same shared object (.so) as the one
- * that performed encryption.**
+ *    - Expects the integer to be stored in slot[0] only.
  *
- * WHY CAN'T WE USE THE SHARED DECRYPTION FUNCTION FROM ANOTHER .SO?
+ * DESIGN CONSTRAINTS:
  * ------------------------------------------------------------
- * Although a similar function `HERMES_DEC_SINGULAR_BFV` is defined in
- * `src/singular/udf.cpp`,
- * **you cannot decrypt here using that version** if it's loaded from a
- * different `.so` file.
+ * ❗ All encryption and decryption UDFs must reside in the same `.so` file.
+ *    - OpenFHE contexts are not portable across shared objects.
+ *    - Even with identical encryption parameters, contexts created in
+ *      different `.so` libraries will generate incompatible ciphertexts.
  *
- * This is because:
+ *    ➤ For this reason, `HERMES_ENC_SINGULAR` and `HERMES_DEC_SINGULAR`
+ *      must be paired within this file. Do not attempt to decrypt in a
+ *      separate plugin (e.g., singular.so) unless context reuse is guaranteed.
  *
- *   - OpenFHE's `CryptoContext` (BFV) construction includes internal randomness
- *     (e.g., in modulus chain generation, key switching matrices, and encoding
- * tables).
- *   - Even with identical input parameters, separate `.so` plugins will
- * generate **non-identical contexts**.
- *   - Ciphertexts encrypted under one context cannot be decrypted under
- * another, even if the keys look compatible.
- *
- * Therefore:
- *
- *     ❌ DO NOT call decryption UDFs across `.so` boundaries.
- *     ✅ Instead, define and invoke decryption functions *within the same .so*
- * where encryption occurred.
- *
- * WHY WE USE getGC():
+ * WHY `getGC()` MATTERS:
  * ------------------------------------------------------------
- * To ensure that encryption and decryption within this `.so` share a
- * **consistent runtime context**, we define `getGC()` as a singleton-like
- * global accessor. This function guarantees:
+ * - All crypto operations use a shared context provided by `getGC()`.
+ * - This function ensures that encryption, aggregation, and decryption
+ *   are performed under the same context instance with a consistent
+ *   modulus chain and encoding configuration.
+ * - Avoids undefined behavior due to context mismatch.
  *
- *   - Only a single `CryptoContext` instance is created.
- *   - All UDFs in this `.so` use the same memory-resident context object.
- *
- * This design avoids subtle issues where different invocations of
- * `makeBfvContext()` may generate new (but incompatible) contexts, even inside
- * the same process.
+ * IMPLEMENTATION DETAILS:
+ * ------------------------------------------------------------
+ * - Ciphertexts are passed between UDFs as base64-encoded strings.
+ * - Internally, all ciphertexts use OpenFHE's BFV scheme with packed encoding.
+ * - Memory allocations are managed via `malloc` and `initid->ptr` to avoid
+ *   MySQL UDF stack overflows (especially for large ciphertexts).
  *
  * DEPENDENCIES:
  *   - OpenFHE v1.2.4
  *   - MySQL UDF API
  *   - Hermes crypto modules:
- *     - context.hpp   → Defines `getGC()` for shared BFV context.
- *     - keygen.hpp    → Loads persistent public/private keys.
- *     - encrypt.hpp   → Encrypts packed plaintext vectors.
- *     - serialize.hpp → (De)serializes ciphertext objects.
- *     - base64.hpp    → Encodes ciphertexts as base64 strings.
+ *     - context.hpp
+ *     - keygen.hpp
+ *     - encrypt.hpp
+ *     - serialize.hpp
+ *     - base64.hpp
  *
  * AUTHOR:
  *   Dongfang Zhao (dzhao@cs.washington.edu)
  *   University of Washington
- *   Last Updated: May 31, 2025
+ *   Last Updated: June 1, 2025
  */
 
 #include <cstring>
@@ -252,5 +247,83 @@ extern "C" long long HERMES_DEC_SINGULAR(UDF_INIT *, UDF_ARGS *args, char *is_nu
     *is_null = 1;
     *err = 1;
     return 0;
+  }
+}
+
+extern "C" bool HERMES_ENC_SINGULAR_init(UDF_INIT *initid, UDF_ARGS *args,
+                                         char *msg) {
+  if (args->arg_count != 1 || args->arg_type[0] != INT_RESULT) {
+    std::strcpy(msg, "HERMES_ENC_SINGULAR expects a single integer input.");
+    return 1;
+  }
+
+  initid->maybe_null = 1;
+  initid->max_length = 65535;
+  initid->ptr = nullptr;
+  return 0;
+}
+
+extern "C" char *HERMES_ENC_SINGULAR(UDF_INIT *initid, UDF_ARGS *args,
+                                     char *result, unsigned long *length,
+                                     char *is_null, char *error) {
+  try {
+    if (!args->args[0]) {
+      *is_null = 1;
+      *error = 1;
+      return nullptr;
+    }
+
+    int64_t val = *reinterpret_cast<long long *>(args->args[0]);
+
+    auto cc = getGC();
+    if (!cc)
+      throw std::runtime_error("Crypto context is null");
+    size_t slot_count = cc->GetEncodingParams()->GetBatchSize();
+    std::vector<int64_t> vec(slot_count, 0);
+    vec[0] = val;
+
+    auto pk = loadPublicKey();
+    if (!pk)
+      throw std::runtime_error("Public key is null");
+
+    auto pt = cc->MakePackedPlaintext(vec);
+    pt->SetLength(slot_count);
+
+    auto ct = cc->Encrypt(pk, pt);
+    if (!ct)
+      throw std::runtime_error("Encryption returned null");
+
+    std::string out = encodeBase64(serializeCiphertext(ct));
+    char *buf = static_cast<char *>(malloc(out.size() + 1));
+    if (!buf) {
+      *is_null = 1;
+      *error = 1;
+      return nullptr;
+    }
+
+    std::memcpy(buf, out.data(), out.size());
+    buf[out.size()] = '\0';
+    *length = out.size();
+    initid->ptr = buf;
+    return buf;
+
+  } catch (const std::exception &e) {
+    std::cerr << "[UDF::HERMES_ENC_SINGULAR] Exception: " << e.what()
+              << std::endl;
+    *is_null = 1;
+    *error = 1;
+    return nullptr;
+  } catch (...) {
+    std::cerr << "[UDF::HERMES_ENC_SINGULAR] Unknown error" << std::endl;
+    *is_null = 1;
+    *error = 1;
+    return nullptr;
+  }
+}
+
+extern "C" void HERMES_ENC_SINGULAR_deinit(UDF_INIT *initid) {
+  if (initid->ptr) {
+    free(initid->ptr);
+    initid->ptr = nullptr;
   }
 }
