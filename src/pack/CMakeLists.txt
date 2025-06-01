@@ -56,3 +56,31 @@ target_link_libraries(hermes_packsum_udf
 set_target_properties(hermes_packsum_udf PROPERTIES
     OUTPUT_NAME "hermes_packsum"
 )
+
+# --------------------------
+# Packed slot-wise update UDFs (add/remove)
+# --------------------------
+add_library(hermes_packupdate_udf SHARED
+    packupdate.cpp
+    ../crypto/base64.cpp
+    ../crypto/context.cpp
+    ../crypto/encrypt.cpp
+    ../crypto/keygen.cpp
+    ../crypto/serialize.cpp
+)
+
+target_include_directories(hermes_packupdate_udf PRIVATE
+    ${OpenFHE_INCLUDE_DIRS}
+    ${MySQL_INCLUDE_DIR}
+    ${PROJECT_SOURCE_DIR}/src  # enables #include "crypto/xxx.hpp"
+)
+
+target_link_libraries(hermes_packupdate_udf
+    ${OpenFHE_LIBRARIES}
+    ${MySQL_LIBRARIES}
+    crypto
+)
+
+set_target_properties(hermes_packupdate_udf PROPERTIES
+    OUTPUT_NAME "hermes_packupdate"
+)
