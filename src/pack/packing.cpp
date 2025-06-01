@@ -1,3 +1,49 @@
+/*
+ * File: src/pack/packing.cpp
+ * ------------------------------------------------------------
+ * HERMES UDFs for Packed Ciphertext Encoding and Decryption
+ *
+ * This file defines two MySQL UDFs for batch encrypting and
+ * decrypting homomorphically encrypted integer vectors:
+ *
+ *   1. HERMES_PACK_CONVERT(val)
+ *      - Aggregate UDF that collects integers from a GROUP BY group,
+ *        packs them into a plaintext vector, encrypts with BFV,
+ *        and returns a Base64-encoded ciphertext.
+ *
+ *   2. HERMES_DEC_VECTOR(ciphertext_base64, logical_length)
+ *      - Scalar UDF that decrypts a packed ciphertext and returns
+ *        a comma-separated string of the first `logical_length`
+ *        plaintext values (excluding padded zeros).
+ *
+ * CURRENT DESIGN (as of June 1, 2025):
+ * ------------------------------------------------------------
+ * ❶ Logical vector length is tracked externally:
+ *     - No longer embedded in ciphertext metadata.
+ *     - Users must manage a separate SQL column to store true
+ *       slot count for each packed vector.
+ *
+ * ❷ Explicit zero-padding to batch capacity:
+ *     - Plaintexts are padded to full OpenFHE batch size,
+ *       enabling future insertions at any position without
+ *       reallocation or structural conflict.
+ *
+ * ❸ Stateless design:
+ *     - No implicit state about position mapping or slot usage.
+ *     - Suitable for stateless parallel execution in UDF context.
+ *
+ * FUTURE EXTENSIONS (Planned Work):
+ * ------------------------------------------------------------
+ *  - Track slot usage metadata to enable efficient insert/remove
+ *    operations that reclaim deleted positions.
+ *  - Integrate compressed ciphertext storage to reduce blob size.
+ *  - Add serialization version tags for compatibility checking.
+ *
+ * AUTHOR:
+ *   Dongfang Zhao (dzhao@cs.washington.edu)
+ *   University of Washington
+ *   Last Updated: June 1, 2025
+ */
 
 #include <cstring>
 #include <mysql/mysql.h>
