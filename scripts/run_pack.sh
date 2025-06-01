@@ -91,48 +91,57 @@ $MYSQL <<EOF
 DROP TABLE IF EXISTS packed_salaries;
 CREATE TABLE packed_salaries (
   dept INT,
-  packed_ct LONGBLOB
+  slot_count INT,      
+  packed_ct LONGBLOB  
 );
 
 INSERT INTO packed_salaries
-SELECT dept, HERMES_PACK_CONVERT(salary)
+SELECT
+  dept,
+  COUNT(salary) AS slot_count,       
+  HERMES_PACK_CONVERT(salary) AS packed_ct
 FROM employees
 GROUP BY dept;
 EOF
 
-echo "[+] Inserted packed ciphertexts into 'packed_salaries'."
+echo "[+] Inserted packed ciphertexts into 'packed_salaries' with slot counts."
 
 # 5. Decrypt to preview the vector value
 echo "[*] Decrypting packed ciphertexts..."
 $MYSQL -e "
 SELECT dept,
-       CAST(HERMES_DEC_VECTOR_BFV(packed_ct) AS CHAR) AS first_salary_in_group
+       slot_count,
+       CAST(HERMES_DEC_VECTOR(packed_ct, slot_count) AS CHAR) AS salary_vector
 FROM packed_salaries;
 "
 
-# 6. Compute encrypted local sum per group
-echo "[*] Computing encrypted local sum per group..."
-$MYSQL <<EOF
-DROP TABLE IF EXISTS packed_sums;
-CREATE TABLE packed_sums (
-  dept INT,
-  local_sum_ct LONGBLOB
-);
+# 6. Compute encrypted local sum per group (in-place update)
+echo "[*] Adding 'local_sum_ct' column to packed_salaries..."
+$MYSQL -e "
+  ALTER TABLE packed_salaries
+  ADD COLUMN local_sum_ct LONGBLOB;
+"
 
-INSERT INTO packed_sums
-SELECT dept, HERMES_PACK_GROUP_SUM(salary)
-FROM employees
-GROUP BY dept;
-EOF
+echo "[*] Computing and storing encrypted local sum for each group..."
+$MYSQL -e "
+  UPDATE packed_salaries ps
+  SET ps.local_sum_ct = (
+    SELECT HERMES_PACK_GROUP_SUM(salary)
+    FROM employees e
+    WHERE e.dept = ps.dept
+  );
+"
 
-echo "[+] Inserted encrypted local sums into 'packed_sums'."
+echo "[+] Encrypted local sums written into 'packed_salaries.local_sum_ct'."
 
-# Optional: Decrypt and check each group's local sum in plaintext
+# Optional: Decrypt and check each group's local sum
 echo "[*] Decrypting local group sums..."
 $MYSQL -e "
-SELECT dept,
+SELECT dept, 
+       slot_count, 
+       CAST(HERMES_DEC_VECTOR(packed_ct, slot_count) AS CHAR) AS salary_vector,
        CAST(HERMES_DEC_SINGULAR(local_sum_ct) AS CHAR) AS local_sum
-FROM packed_sums;
+FROM packed_salaries;
 "
 
 # 7. Compute global sum (homomorphic sum of local group sums)
@@ -144,7 +153,7 @@ CREATE TABLE global_sum (
 );
 
 INSERT INTO global_sum
-SELECT HERMES_PACK_GLOBAL_SUM(local_sum_ct) FROM packed_sums;
+SELECT HERMES_PACK_GLOBAL_SUM(local_sum_ct) FROM packed_salaries;
 EOF
 
 echo "[+] Computed global ciphertext sum."
