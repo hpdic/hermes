@@ -192,3 +192,25 @@ SELECT dept,
 FROM packed_salaries
 WHERE dept = 1;
 "
+
+# 9. Delete a value from a packed ciphertext (slot-wise)
+echo "[*] Testing HERMES_PACK_RMV ..."
+
+$MYSQL -e "
+UPDATE packed_salaries
+SET
+  packed_ct = HERMES_PACK_RMV(packed_ct, 1, slot_count),
+  local_sum_ct = HERMES_SUM_CIPHERS(local_sum_ct, HERMES_ENC_SINGULAR(-2000)),
+  slot_count = slot_count - 1
+WHERE dept = 1;
+"
+
+# Preview after deletion
+$MYSQL -e "
+SELECT dept,
+       slot_count,
+       CAST(HERMES_DEC_VECTOR(packed_ct, slot_count) AS CHAR) AS updated_vector,
+       CAST(HERMES_DEC_SINGULAR(local_sum_ct) AS CHAR) AS updated_sum
+FROM packed_salaries
+WHERE dept = 1;
+"

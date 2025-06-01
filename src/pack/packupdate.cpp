@@ -145,11 +145,16 @@ void HERMES_PACK_ADD_deinit(UDF_INIT *initid) {
   }
 }
 
-// UDF: HERMES_PACK_RMV(ciphertext, index)
-bool HERMES_PACK_RMV_init(UDF_INIT *, UDF_ARGS *args, char *msg) {
-  if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT ||
-      args->arg_type[1] != INT_RESULT) {
-    std::strcpy(msg, "HERMES_PACK_RMV expects (string, int)");
+// UDF: HERMES_PACK_RMV(ciphertext_base64, index_to_remove, current_slot_count)
+/**
+ * Author: Dongfang Zhao (dzhao@cs.washington.edu)
+ * Institution: University of Washington
+ * Last Updated: 2025-06-01
+ */
+bool HERMES_PACK_RMV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  if (args->arg_count != 3 || args->arg_type[0] != STRING_RESULT ||
+      args->arg_type[1] != INT_RESULT || args->arg_type[2] != INT_RESULT) {
+    std::strcpy(msg, "HERMES_PACK_RMV expects (string, int, int)");
     return true;
   }
   return false;
@@ -159,10 +164,11 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
                       unsigned long *length, char *is_null, char *err) {
   try {
     auto cc = getGC();
+
+    // Input parsing
     std::string ct_str(args->args[0], args->lengths[0]);
     int64_t index = *reinterpret_cast<long long *>(args->args[1]);
-    int64_t k = *reinterpret_cast<long long *>(
-        args->args[2]); // current used slot count
+    int64_t k = *reinterpret_cast<long long *>(args->args[2]);
 
     auto ct = deserializeCiphertext(decodeBase64(ct_str));
     size_t slot_count = cc->GetEncodingParams()->GetBatchSize();
@@ -173,41 +179,38 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
       return nullptr;
     }
 
-    // If removing the last slot, just mask it out
-    if (index == k - 1) {
-      std::vector<int64_t> mask(slot_count, 1);
-      mask[index] = 0;
-      auto pt_mask = cc->MakePackedPlaintext(mask);
-      pt_mask->SetLength(slot_count);
-      auto ct_masked = cc->EvalMult(ct, pt_mask);
-      auto out = encodeBase64(serializeCiphertext(ct_masked));
-      std::memcpy(result, out.data(), out.size());
-      *length = out.size();
-      return result;
-    }
-
-    // Step 1: Clear slot[index]
+    // Prepare masks
     std::vector<int64_t> mask(slot_count, 1);
     mask[index] = 0;
     auto pt_mask = cc->MakePackedPlaintext(mask);
     pt_mask->SetLength(slot_count);
+
+    // Case 1: removing the last element
+    if (index == k - 1) {
+      auto ct_masked = cc->EvalMult(ct, pt_mask);
+      auto out_str = encodeBase64(serializeCiphertext(ct_masked));
+      std::memcpy(result, out_str.data(), out_str.size());
+      *length = out_str.size();
+      return result;
+    }
+
+    // Step 1: zero out slot[index]
     auto ct_cleared = cc->EvalMult(ct, pt_mask);
 
-    // Step 2: Extract value at slot[k-1]
+    // Step 2: extract last slot value
     std::vector<int64_t> last_mask(slot_count, 0);
     last_mask[k - 1] = 1;
     auto pt_last = cc->MakePackedPlaintext(last_mask);
     pt_last->SetLength(slot_count);
     auto ct_last_val = cc->EvalMult(ct, pt_last);
 
-    // Step 3: Rotate last_val to index position
-    auto ct_shifted =
-        cc->EvalAtIndex(ct_last_val, index - (k - 1)); // right rotation
+    // Step 3: shift last value to index position
+    auto ct_shifted = cc->EvalAtIndex(ct_last_val, index - (k - 1));
 
-    // Step 4: Add it into cleared ct
+    // Step 4: insert value into cleared ct
     auto ct_updated = cc->EvalAdd(ct_cleared, ct_shifted);
 
-    // Step 5: Zero out slot[k-1] (optional)
+    // Step 5: clear slot[k-1] again
     std::vector<int64_t> final_mask(slot_count, 1);
     final_mask[k - 1] = 0;
     auto pt_final_mask = cc->MakePackedPlaintext(final_mask);
@@ -215,9 +218,9 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
     auto ct_final = cc->EvalMult(ct_updated, pt_final_mask);
 
     // Output
-    auto out = encodeBase64(serializeCiphertext(ct_final));
-    std::memcpy(result, out.data(), out.size());
-    *length = out.size();
+    auto out_str = encodeBase64(serializeCiphertext(ct_final));
+    std::memcpy(result, out_str.data(), out_str.size());
+    *length = out_str.size();
     return result;
 
   } catch (...) {
