@@ -19,7 +19,7 @@ Hermes exposes the following homomorphic encryption UDFs as native SQL functions
 | `HERMES_MUL_SCALAR_BFV(ct, scalar)` | Multiply ciphertext by scalar | `singular/udf.cpp` |
 | `HERMES_MUL_BFV(ct1, ct2)` | Multiply two ciphertexts | `singular/udf.cpp` |
 | `HERMES_PACK_CONVERT(val)` | Pack group values into vector ciphertext | `pack/packing.cpp` |
-| `HERMES_DEC_VECTOR_BFV(ct)` | Decrypt packed vector into CSV | `pack/packing.cpp` |
+| `HERMES_DEC_VECTOR(ct)` | Decrypt packed vector into CSV | `pack/packing.cpp` |
 | `HERMES_PACK_GROUP_SUM(val)` | Encrypt per-group sum | `pack/packsum.cpp` |
 | `HERMES_PACK_GLOBAL_SUM(ct)` | Add all group ciphertexts | `pack/packsum.cpp` |
 | `HERMES_ENC_SINGULAR(val)` | Encrypt scalar as BFV (internal SO-safe) | `pack/packsum.cpp` |

@@ -49,7 +49,7 @@ extern "C" bool HERMES_DEC_VECTOR_init(UDF_INIT *initid, UDF_ARGS *args,
   if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT ||
       args->arg_type[1] != INT_RESULT) {
     std::strcpy(
-        msg, "HERMES_DEC_VECTOR_BFV expects (base64_ciphertext, int_length)");
+        msg, "HERMES_DEC_VECTOR expects (base64_ciphertext, int_length)");
     return 1;
   }
 
