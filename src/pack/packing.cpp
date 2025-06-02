@@ -16,29 +16,6 @@
  *        a comma-separated string of the first `logical_length`
  *        plaintext values (excluding padded zeros).
  *
- * CURRENT DESIGN (as of June 1, 2025):
- * ------------------------------------------------------------
- * ❶ Logical vector length is tracked externally:
- *     - No longer embedded in ciphertext metadata.
- *     - Users must manage a separate SQL column to store true
- *       slot count for each packed vector.
- *
- * ❷ Explicit zero-padding to batch capacity:
- *     - Plaintexts are padded to full OpenFHE batch size,
- *       enabling future insertions at any position without
- *       reallocation or structural conflict.
- *
- * ❸ Stateless design:
- *     - No implicit state about position mapping or slot usage.
- *     - Suitable for stateless parallel execution in UDF context.
- *
- * FUTURE EXTENSIONS (Planned Work):
- * ------------------------------------------------------------
- *  - Track slot usage metadata to enable efficient insert/remove
- *    operations that reclaim deleted positions.
- *  - Integrate compressed ciphertext storage to reduce blob size.
- *  - Add serialization version tags for compatibility checking.
- *
  * AUTHOR:
  *   Dongfang Zhao (dzhao@cs.washington.edu)
  *   University of Washington

@@ -11,18 +11,22 @@ The name is also inspired by *Hermes*, the Greek god of communication, reflectin
 
 Hermes exposes the following homomorphic encryption UDFs as native SQL functions. Each UDF is implemented in a corresponding `.so` plugin module:
 
-| Function | Description | Plugin Source |
-|----------|-------------|----------------|
-| `HERMES_ENC_SINGULAR_BFV(val)` | Encrypt a plaintext integer into a BFV ciphertext (base64) | `singular/udf.cpp` |
-| `HERMES_DEC_SINGULAR_BFV(ciphertext)` | Decrypt base64-encoded ciphertext and return plaintext | `singular/udf.cpp` |
-| `HERMES_SUM_BFV(ciphertext)` | Aggregate ciphertexts over SQL groups and return decrypted sum | `singular/udf.cpp` |
-| `HERMES_MUL_SCALAR_BFV(ciphertext, scalar)` | Multiply ciphertext by a plaintext scalar | `singular/udf.cpp` |
-| `HERMES_MUL_BFV(ciphertext1, ciphertext2)` | Multiply two ciphertexts homomorphically | `singular/udf.cpp` |
-| `HERMES_PACK_CONVERT(val)` | Pack values into a ciphertext vector (aggregate) | `pack/packing.cpp` |
-| `HERMES_DEC_VECTOR_BFV(ct)` | Decrypt and return vector plaintext as CSV | `pack/packing.cpp` |
-| `HERMES_PACK_GROUP_SUM(val)` | Compute encrypted scalar sum within group (aggregate) | `pack/packsum.cpp` |
-| `HERMES_PACK_GLOBAL_SUM(ct)` | Sum local encrypted group aggregates homomorphically | `pack/packsum.cpp` |
-| `HERMES_DEC_SINGULAR(ct)` | Decrypt scalar ciphertext (internal SO-safe only) | `pack/packsum.cpp` |
+| UDF Function | Description | Source File |
+|--------------|-------------|-------------|
+| `HERMES_ENC_SINGULAR_BFV(val)` | Encrypt scalar integer (slot[0]) | `singular/udf.cpp` |
+| `HERMES_DEC_SINGULAR_BFV(ct)` | Decrypt scalar ciphertext | `singular/udf.cpp` |
+| `HERMES_SUM_BFV(ct)` | Aggregate ciphertexts homomorphically | `singular/udf.cpp` |
+| `HERMES_MUL_SCALAR_BFV(ct, scalar)` | Multiply ciphertext by scalar | `singular/udf.cpp` |
+| `HERMES_MUL_BFV(ct1, ct2)` | Multiply two ciphertexts | `singular/udf.cpp` |
+| `HERMES_PACK_CONVERT(val)` | Pack group values into vector ciphertext | `pack/packing.cpp` |
+| `HERMES_DEC_VECTOR_BFV(ct)` | Decrypt packed vector into CSV | `pack/packing.cpp` |
+| `HERMES_PACK_GROUP_SUM(val)` | Encrypt per-group sum | `pack/packsum.cpp` |
+| `HERMES_PACK_GLOBAL_SUM(ct)` | Add all group ciphertexts | `pack/packsum.cpp` |
+| `HERMES_ENC_SINGULAR(val)` | Encrypt scalar as BFV (internal SO-safe) | `pack/packsum.cpp` |
+| `HERMES_DEC_SINGULAR(ct)` | Decrypt scalar (internal SO-safe) | `pack/packsum.cpp` |
+| `HERMES_PACK_ADD(ct, val, idx)` | Insert value at given slot in packed ciphertext | `pack/packupdate.cpp` |
+| `HERMES_PACK_RMV(ct, idx, k)` | Remove slot at index, compact vector | `pack/packupdate.cpp` |
+| `HERMES_SUM_CIPHERS(ct1, ct2)` | EvalAdd of two ciphertexts | `pack/packupdate.cpp` |
 
 All functions use the **BFV** scheme via [OpenFHE](https://github.com/openfheorg/openfhe-development) and are compatible with standard SQL operators such as `SELECT`, `GROUP BY`, and `CAST`.
 
@@ -47,7 +51,7 @@ For full installation instructions, see [INSTALL.md](./INSTALL.md).
 
 Hermes is designed to:
 
-- **Minimize system intrusion**: implemented entirely as MySQL UDFs.
+- **Minimize system intrusion**: implemented entirely as MySQL loadable functions with C++.
 - **Enable modular deployment**: each homomorphic operation is a plugin.
 - **Preserve SQL compatibility**: no schema rewrites or query rewriting.
 - **Support secure processing**: all ciphertexts remain encrypted in transit and storage.

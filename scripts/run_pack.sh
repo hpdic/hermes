@@ -6,43 +6,47 @@
 #
 # FUNCTIONALITY:
 # --------------------------------------------------------------------
-# This script performs a full test of HERMES's encrypted packing and
-# aggregation capabilities over a realistic employee salary table.
+# This script runs a full integration test of HERMES’s encrypted vector
+# packing and aggregation capabilities using a realistic employee table.
 #
-# Specifically, it exercises:
-#
+# Covered UDFs:
 # 1. HERMES_PACK_CONVERT:
-#    - Packs all salaries in each department into a ciphertext.
+#    - Packs all salaries within each department into a BFV ciphertext.
 #
 # 2. HERMES_DEC_VECTOR:
-#    - Decrypts the packed vector to verify correct packing.
+#    - Decrypts packed ciphertexts to verify per-slot encoding.
 #
 # 3. HERMES_PACK_GROUP_SUM:
-#    - Computes encrypted local sum of salaries per department using BFV.
+#    - Computes encrypted group sums per department.
 #
 # 4. HERMES_DEC_SINGULAR:
-#    - Decrypts scalar ciphertexts produced by group sums.
+#    - Decrypts scalar (summation) ciphertexts to recover integer totals.
 #
 # 5. HERMES_PACK_GLOBAL_SUM:
-#    - Aggregates the local sum ciphertexts into a global encrypted total.
+#    - Aggregates all group ciphertexts into a global sum ciphertext.
+#
+# 6. HERMES_PACK_ADD:
+#    - Inserts a new value into a specific slot of a packed ciphertext.
+#
+# 7. HERMES_PACK_RMV:
+#    - Removes a value from a specific slot of a packed ciphertext.
 #
 # USAGE NOTES:
 # --------------------------------------------------------------------
-# - All UDFs must be pre-registered and implemented within the *same*
-#   shared object (.so) file due to OpenFHE context compatibility issues.
-#
-# - This script writes diagnostic markers to MySQL error log for traceability.
-# - Sample employee records are inserted and grouped by `dept`.
+# - All UDFs must reside in the same .so file to share encryption context.
+# - MySQL writes test-phase markers to the error log for debugging.
+# - Example table groups salaries by department (`dept`) column.
 #
 # DEPENDENCIES:
-#   - MySQL UDFs from the HERMES project
+#   - HERMES MySQL UDF plugin (compiled and registered)
 #   - OpenFHE v1.2.4 runtime
-#   - MySQL server with access to hpdic_db and user: hpdic / password: hpdic2023
+#   - MySQL 8+ server with test database `hpdic_db`
+#   - User: hpdic / Password: hpdic2023
 #
 # AUTHOR:
 #   Dongfang Zhao (dzhao@cs.washington.edu)
 #   University of Washington
-#   Last Updated: May 31, 2025
+#   Last Updated: June 2, 2025
 
 set -euo pipefail
 

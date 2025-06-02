@@ -1,7 +1,28 @@
-// keygen.cpp — OpenFHE Key Generation Implementation
-// Author: Dongfang Zhao (dzhao@cs.washington.edu)
-// Institution: University of Washington
-// Last Updated: May 29, 2025
+/*
+ * File: keygen.cpp
+ * ------------------------------------------------------------
+ * OpenFHE Key Generation Implementation for HERMES.
+ *
+ * This module provides unified key generation and persistence for BFV-based
+ * encrypted vector databases. It includes:
+ *
+ *   - Public/secret key generation
+ *   - Evaluation key generation for multiplication, summation, and rotation
+ *   - Automatic generation of rotation (Galois) keys using a logarithmic
+ * scheme:
+ *
+ *       ±(1, 2, 4, ..., slot_count / 2)
+ *
+ *   - Binary serialization of all generated keys to the tmp/ directory
+ *
+ * This strategy ensures complete coverage of all legal EvalAtIndex()
+ * operations with logarithmic key footprint, making it suitable for packed
+ * ciphertext operations including encrypted update, deletion, and aggregation.
+ *
+ * Author: Dongfang Zhao (dzhao@cs.washington.edu)
+ * Institution: University of Washington
+ * Last Updated: June 2, 2025
+ */
 
 #include "openfhe.h"
 #include "openfhecore.h"

@@ -2,24 +2,25 @@
 # ========================================================================
 # File: script/build.sh
 # ------------------------------------------------------------------------
-# HERMES Plugin Build and UDF Registration Script
+# HERMES Plugin Build, Installation, and UDF Registration Script
 #
 # FUNCTIONALITY:
 # ------------------------------------------------------------------------
-# This script builds and installs all HERMES MySQL UDF plugins, including:
+# This script automates the full lifecycle of HERMES plugin deployment,
+# including:
 #
-#   1. Compilation of source code via CMake and Make.
-#   2. Copying shared libraries to MySQL's plugin directory.
-#   3. Restarting the MySQL server to reset UDF loading state.
-#   4. Registering all HERMES functions and aggregate functions.
-#   5. Generating BFV keypair (public + secret) under /tmp/hermes/.
+#   1. Compilation of all HERMES plugin targets via CMake/Make.
+#   2. Copying shared libraries (*.so) to MySQL’s plugin directory.
+#   3. Restarting MySQL to ensure plugin state reset.
+#   4. Registering all relevant UDFs and aggregate functions.
+#   5. Generating a default BFV keypair (public + secret) under /tmp/hermes.
 #
-# SUPPORTED PLUGINS AND UDFS:
+# REGISTERED PLUGINS AND FUNCTIONS:
 # ------------------------------------------------------------------------
 # Plugin: libhermes_udf.so
 #   - HERMES_ENC_SINGULAR_BFV
 #   - HERMES_DEC_SINGULAR_BFV
-#   - HERMES_SUM_BFV
+#   - HERMES_SUM_BFV (aggregate)
 #   - HERMES_MUL_BFV
 #   - HERMES_MUL_SCALAR_BFV
 #
@@ -30,29 +31,35 @@
 # Plugin: libhermes_packsum.so
 #   - HERMES_PACK_GROUP_SUM (aggregate)
 #   - HERMES_PACK_GLOBAL_SUM (aggregate)
+#   - HERMES_ENC_SINGULAR
 #   - HERMES_DEC_SINGULAR
+#
+# Plugin: libhermes_packupdate.so
+#   - HERMES_PACK_ADD
+#   - HERMES_PACK_RMV
+#   - HERMES_SUM_CIPHERS
 #
 # IMPORTANT NOTES:
 # ------------------------------------------------------------------------
-# ⚠️  All UDFs using OpenFHE encryption/decryption must reside in the
-#     *same shared object (.so)* to ensure consistent CryptoContext state.
+# ⚠️  OpenFHE CryptoContext objects are not binary-compatible across
+#     shared libraries. All OpenFHE-based UDFs must reside in the *same*
+#     plugin if they are to interoperate (e.g., encryption/decryption).
 #
-#     Even if `makeBfvContext()` is called with the same parameters,
-#     OpenFHE may produce structurally incompatible contexts across .so
-#     boundaries due to internal randomness during context construction.
+# ✅  This script ensures each function is registered to the correct .so,
+#     and that internal calls share context via `getGC()`.
 #
-# ✅  This script ensures that each function is registered with the correct
-#     originating plugin and reuses shared contexts via `getGC()` internally.
+# ✅  Key material is stored in /tmp/hermes (public/secret/Galois keys),
+#     regenerated on every invocation to ensure reproducibility.
 #
 # DEPENDENCIES:
-#   - MySQL server with UDF plugin loading enabled
+#   - MySQL server with plugin loading enabled
 #   - OpenFHE v1.2.4 (linked at build time)
-#   - Writable /tmp/hermes/ for key storage
+#   - Writable /tmp/hermes directory for key output
 #
 # AUTHOR:
 #   Dr. Dongfang Zhao (dzhao@cs.washington.edu)
 #   University of Washington
-#   Last Updated: May 31, 2025
+#   Last Updated: June 1, 2025
 # ========================================================================
 
 set -e

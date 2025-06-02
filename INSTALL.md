@@ -1,23 +1,21 @@
-# Hermes: Encrypted Query Processing via MySQL + OpenFHE
+# Hermes: Homomorphic Encryption Plugin for MySQL
 
-Hermes is a homomorphic encryption plugin for MySQL using the OpenFHE library (BFV scheme). It supports compile-time encryption, secure ciphertext storage, SQL-compatible decryption, aggregation, and homomorphic multiplication—all as native UDFs callable from SQL.
+Hermes is a MySQL plugin powered by OpenFHE (using the BFV scheme) that enables native SQL-compatible encrypted computation. It supports scalar encryption, packed vector encoding, encrypted aggregation, slot-wise updates, and group-wise secure computation.
 
 ---
 
 ## 📦 System Requirements
 
-Ensure the following dependencies are installed:
-
-### Required Packages
+Ensure the following packages are installed:
 
 - **MySQL Server (>= 8.0)**
-- **OpenFHE (>= v1.2.4)** with BFV scheme support
+- **OpenFHE (>= v1.2.4)** with BFV support
 - **CMake (>= 3.10)**
-- **g++ (>= 9.4)** or any C++17-compatible compiler
+- **g++ (>= 9.4)** or any C++17-compliant compiler
 - **libmysqlclient-dev**
 - **Python 3** (for helper scripts)
 
-Install essentials via:
+Install via:
 
 ```bash
 sudo apt update
@@ -28,124 +26,132 @@ sudo apt install mysql-server libmysqlclient-dev cmake g++ build-essential pytho
 
 ## 🔁 OpenFHE Compatibility
 
-All testing is performed using the following fork:
+Tested using the following OpenFHE fork:
 
-👉 <https://github.com/hpdic/openfhe-development>
+👉 https://github.com/hpdic/openfhe-development
 
-⚠️ Compatibility with upstream OpenFHE is **not guaranteed** due to possible API differences.
-
----
-
-## ⚠️ Plugin Boundary Warning
-
-Hermes uses OpenFHE’s `CryptoContext` to encrypt and decrypt data. **Contexts created independently across different `.so` plugin files are not guaranteed to be compatible**, even if the same parameters are used.
-
-This is because OpenFHE injects implicit randomness into:
-- Modulus chain construction
-- Key switching matrix generation
-- Plaintext encoding infrastructure
-
-As a result:
-
-- ✅ **Encryption and decryption will succeed** if performed inside the *same shared object (.so)*.
-- ❌ **Cross-plugin decryption will fail silently or return `NULL`**, even if both plugins call the same `makeBfvContext()`.
-
-To ensure correctness:
-> **Always pair encryption and decryption logic within the same `.so` file.**
+⚠️ Compatibility with upstream OpenFHE is **not guaranteed** due to API and serialization format differences.
 
 ---
 
-## 🔧 Installation Instructions
+## ⚠️ CryptoContext Isolation Warning
 
-### 1. Clone the Repository
+OpenFHE contexts are not safely portable across `.so` boundaries. Even with identical parameters, BFV `CryptoContext` objects created in different shared libraries may be structurally incompatible.
+
+To ensure encryption and decryption succeed:
+
+✅ Pair encryption and decryption UDFs within the **same `.so`**  
+❌ Avoid passing ciphertexts between plugins
+
+---
+
+## 🔧 Installation
+
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/hpdic/hermes.git
 cd hermes
 ```
 
-### 2. Build and Register the Plugin
+### 2. Build and Register All Plugins
 
-This step compiles the plugin, installs it into MySQL’s plugin directory, and registers all functions:
+Run:
 
 ```bash
 ./script/build.sh
 ```
 
-### 3. Link OpenFHE Shared Libraries
+This will:
+- Compile all plugin sources
+- Install shared libraries to `/usr/lib/mysql/plugin/`
+- Restart MySQL
+- Register all UDFs (scalar and aggregate)
+- Generate BFV key pair under `/tmp/hermes/`
 
-If the system cannot find `libOPENFHE*.so`, run:
+### 3. Link OpenFHE Libraries
+
+If `libOPENFHE*.so` cannot be found at runtime:
 
 ```bash
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/openfhe.conf
 sudo ldconfig
 ```
 
-### 4. Run the Test Suite
+---
+
+## ✅ UDF Overview
+
+| Function Name | Type | Description |
+|---------------|------|-------------|
+| `HERMES_ENC_SINGULAR_BFV(val)` | Scalar | Encrypts integer `val` into slot[0] of a packed BFV ciphertext |
+| `HERMES_DEC_SINGULAR_BFV(ct)` | Scalar | Decrypts a base64 ciphertext and returns plaintext at slot[0] |
+| `HERMES_SUM_BFV(val)` | Aggregate | Homomorphic summation of group values (encrypts result) |
+| `HERMES_MUL_BFV(ct1, ct2)` | Scalar | Homomorphic multiplication of two ciphertexts |
+| `HERMES_MUL_SCALAR_BFV(ct, scalar)` | Scalar | Multiply ciphertext by plaintext scalar |
+| `HERMES_PACK_CONVERT(val)` | Aggregate | Packs grouped values into a ciphertext vector |
+| `HERMES_DEC_VECTOR(ct, k)` | Scalar | Decrypts and prints vector of `k` slots |
+| `HERMES_PACK_GROUP_SUM(val)` | Aggregate | Computes groupwise encrypted sum |
+| `HERMES_PACK_GLOBAL_SUM(ct)` | Aggregate | Sums multiple encrypted group aggregates |
+| `HERMES_ENC_SINGULAR(val)` | Scalar | Internal-use secure scalar encryption (BFV packed slot[0]) |
+| `HERMES_DEC_SINGULAR(ct)` | Scalar | Internal-use decryption of slot[0] |
+| `HERMES_PACK_ADD(ct, val, idx)` | Scalar | Inserts `val` into `ct` at slot `idx` homomorphically |
+| `HERMES_PACK_RMV(ct, idx, k)` | Scalar | Removes slot `idx` by compacting last slot in k-length vector |
+| `HERMES_SUM_CIPHERS(ct1, ct2)` | Scalar | Homomorphic addition of two ciphertexts |
+
+---
+
+## 🧪 Run End-to-End Test
+
+Use the test script:
 
 ```bash
-./script/test.sh
+./script/run_pack.sh
 ```
 
----
+This runs a full SQL workflow using:
 
-## ✅ UDFs and Features
-
-| Function | Description |
-|----------|-------------|
-| `HERMES_ENC_SINGULAR_BFV(val)` | Encrypt a plaintext integer into a BFV ciphertext (base64) |
-| `HERMES_DEC_SINGULAR_BFV(ciphertext)` | Decrypt base64-encoded ciphertext and return plaintext |
-| `HERMES_SUM_BFV(ciphertext)` | Aggregate ciphertexts over SQL groups and return decrypted sum |
-| `HERMES_MUL_SCALAR_BFV(ciphertext, scalar)` | Multiply ciphertext by a plaintext scalar |
-| `HERMES_MUL_BFV(ciphertext1, ciphertext2)` | Multiply two ciphertexts homomorphically |
-| `HERMES_PACK_CONVERT(val)` | Pack values into a ciphertext vector (aggregate) |
-| `HERMES_DEC_VECTOR_BFV(ct)` | Decrypt and return vector plaintext as CSV |
-| `HERMES_PACK_GROUP_SUM(val)` | Compute encrypted scalar sum within group (aggregate) |
-| `HERMES_PACK_GLOBAL_SUM(ct)` | Sum local encrypted group aggregates homomorphically |
-| `HERMES_DEC_SINGULAR(ct)` | Decrypt scalar ciphertext (internal SO-safe only) |
-
-All functions are designed to work within standard SQL pipelines including `GROUP BY`, `JOIN`, and nested queries.
+- Encrypted packing
+- Encrypted group aggregation
+- Encrypted updates and slot removal
+- Final global sum verification
 
 ---
 
-## 🧠 Tips & Troubleshooting
+## 🔍 Debugging Tips
 
-### Valid Plaintext Moduli
+### Valid Modulus
 
-BFV requires the plaintext modulus $p$ to satisfy:
+BFV requires plaintext modulus $p$ such that $(p - 1) \mod m = 0$.
 
-$$
-(p - 1) \bmod m = 0
-$$
-
-Where $m$ is the cyclotomic ring dimension (default: $2^{14} = 16384$).
-
+Default ring dimension: $m = 16384$  
 ✅ Valid: `268369921`  
-❌ Invalid: `131101` (leads to `SetParams_2n()` / `RootOfUnity()` errors)
+❌ Invalid: `131101` (throws RootOfUnity errors)
 
-To search for valid $p$:
+Search for a valid modulus via:
 
 ```bash
 python3 scripts/find_valid_moduli.py --ring-dim 16384 --min 100000000 --max 300000000
 ```
 
-### Diagnosing Crashes
-
-If MySQL crashes during plugin execution, check logs:
+### Crash Recovery
 
 ```bash
 sudo tail -n 100 /var/log/mysql/error.log
 ```
 
-Typical causes:
-- Invalid modulus
-- Memory exhaustion
-- Cross-plugin `CryptoContext` mismatch
+Common causes:
+
+- Context mismatch across plugins
+- Invalid ciphertext
+- Incorrect plaintext modulus
+- Memory overflow
 
 ---
 
 ## 👤 Contact
 
-Dr. Dongfang Zhao  
+**Dr. Dongfang Zhao**  
 HPDIC Lab, University of Washington  
 📧 dzhao@cs.washington.edu
+

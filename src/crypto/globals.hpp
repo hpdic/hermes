@@ -12,7 +12,7 @@
  *
  * Author: Dongfang Zhao (dzhao@cs.washington.edu)
  * Institution: University of Washington
- * Last Updated: May 30, 2025
+ * Last Updated: June 1, 2025
  */
 
 #pragma once

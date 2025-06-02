@@ -3,74 +3,62 @@
  * ------------------------------------------------------------
  * HERMES Update UDFs for Packed Ciphertexts (Preliminary Version)
  *
- * This file defines two MySQL UDFs for updating homomorphically encrypted
+ * This file defines three MySQL UDFs for updating homomorphically encrypted
  * vectors stored in a packed ciphertext:
  *
  *   1. HERMES_PACK_ADD(ciphertext_base64, val, index)
  *      - Inserts `val` at a specified `index` slot via EvalAdd with a
  *        one-hot encrypted plaintext.
  *
- *   2. HERMES_PACK_RMV(ciphertext_base64, index, k)
+ *   2. HERMES_PACK_RMV(ciphertext_base64, index_to_remove, current_slot_count)
  *      - Removes the value at a specified `index` slot by:
  *        (i) zeroing that slot with a plaintext mask,
  *        (ii) copying the last occupied slot (at `k - 1`) to fill the gap,
  *        (iii) clearing the original tail slot.
- *      - This behavior ensures the ciphertext remains compact (no gaps).
+ *      - This behavior ensures the ciphertext remains dense (no gaps).
  *
- * This version compiles and runs under OpenFHE v1.2.4 with BFV scheme.
+ *   3. HERMES_SUM_CIPHERS(cipher1_base64, cipher2_base64)
+ *      - Performs homomorphic EvalAdd on two packed ciphertexts.
  *
- * CURRENT DESIGN ASSUMPTIONS AND LIMITATIONS:
+ * This version compiles and runs under OpenFHE v1.2.4 with the BFV scheme.
+ *
+ * CURRENT DESIGN ASSUMPTIONS AND CAPABILITIES:
  * ------------------------------------------------------------
- *  ❶ No tracking of tuple-to-slot assignment:
- *     - There is no maintained mapping between plaintext tuple IDs and
- *       encrypted slot positions. It is assumed that GROUP BY tuples
- *       are encoded into packed ciphertexts in sequential order.
+ *  ✅ Tuple-slot mapping is external:
+ *     - The UDF does not track which tuple maps to which slot. Instead,
+ *       we assume the database layer maintains this mapping (e.g., via
+ *       a separate index column).
  *
- *  ❷ No automatic slot occupation state management:
- *     - The caller must supply the number of valid slots `k` explicitly.
- *     - `HERMES_PACK_ADD` does not manage free slot allocation;
- *       it inserts at the given index directly.
+ *  ✅ Slot occupancy is dense and maintained:
+ *     - The UDFs maintain a compact ciphertext layout with no unused slots
+ *       between values. Deletions compact the vector by overwriting the
+ *       deleted slot and zeroing the tail.
  *
- *  ❸ No local sum tracking:
- *     - The ciphertext does not internally maintain the sum of plaintext values
- *       (i.e., "local sum") or slot occupancy metadata.
- *     - Reserved slots like slot[0] (for count) and slot[n−1] (for sum) are not
- * updated.
- *
- * IMPLEMENTED EXTENSIONS:
+ * FUTURE EXTENSIONS (Planned Directions):
  * ------------------------------------------------------------
- *  ✅ Deletion with compaction:
- *     - The `HERMES_PACK_RMV` function performs in-place compaction by moving
- * the last valid slot into the position of the removed slot, then zeroing out
- * the tail.
- *     - This avoids internal fragmentation in packed ciphertexts.
+ *  1. Alternative to in-place compaction:
+ *     The current deletion strategy performs in-place compaction by moving
+ *     the last slot into the removed position. This simplifies slot tracking
+ *     and avoids fragmentation, but incurs one Galois rotation and two
+ *     homomorphic multiplications per operation.
  *
- * FUTURE EXTENSIONS (Planned Work):
- * ------------------------------------------------------------
- *  1. Add tuple-to-slot mapping:
- *     - Extend the plaintext database with a column recording each tuple’s
- *       assigned slot index within the group ciphertext.
+ *     Other strategies—such as marking slots as inactive or maintaining
+ *     an external free-slot bitmap—may reduce cryptographic overhead,
+ *     but require more complex database-side logic to manage occupancy state.
  *
- *  2. Automate slot occupation tracking:
- *     - Track and maintain the number of valid slots (e.g., via metadata or
- * separate table).
- *     - Automatically assign next free slot on insertion and adjust on
- * deletion.
+ *     The current design makes a deliberate trade-off: moderate homomorphic
+ *     cost in exchange for dense ciphertext layout and simpler slot management.
  *
- *  3. Maintain local sum as metadata:
- *     - Encode local slot count and cumulative sum directly into reserved
- * slots.
- *     - Update these during each add/rmv operation.
- *
- *  4. Optimize removal without EvalMult:
- *     - Current deletion uses ciphertext × plaintext masks (EvalMult),
- *       which increases noise and may require bootstrapping.
- *     - Future versions will explore rotation-based overwrites
- *       to eliminate EvalMult and reduce noise growth.
+ *  2. Maskless deletion via rotation:
+ *     It is possible to implement removal purely using Galois rotations and
+ *     additions—by cyclically rotating the tail value into the target position
+ *     and subtracting out the original. This would avoid EvalMult altogether,
+ *     but may require additional Galois keys and is unlikely to yield better
+ *     performance in practice.
  *
  * Author: Dongfang Zhao (dzhao@cs.washington.edu)
  * Institution: University of Washington
- * Last Updated: June 1st, 2025
+ * Last Updated: June 1, 2025
  */
 
 #include "context.hpp"
