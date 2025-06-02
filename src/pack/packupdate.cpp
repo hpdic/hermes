@@ -247,7 +247,7 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
       std::cerr << idx << " ";
     }
     std::cerr << "}" << std::endl;
-    auto ct_shifted = cc->EvalAtIndex(ct_last_val, index - (k - 1));
+    auto ct_shifted = cc->EvalAtIndex(ct_last_val, (k - 1) - index);
     Plaintext pt3;
     cc->Decrypt(secretKey, ct_shifted, &pt3);
     pt3->SetLength(slot_count);
@@ -276,10 +276,16 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
     auto out_str = encodeBase64(serializeCiphertext(ct_final));
     std::cerr << "[RMV] final base64 length = " << out_str.size() << std::endl;
 
-    std::memcpy(result, out_str.data(), out_str.size());
+    char *buffer = static_cast<char *>(malloc(out_str.size()));
+    if (!buffer) {
+      std::cerr << "[RMV] malloc failed for output buffer." << std::endl;
+      *is_null = 1;
+      *err = 1;
+      return nullptr;
+    }
+    std::memcpy(buffer, out_str.data(), out_str.size());
     *length = out_str.size();
-    return result;
-
+    return buffer;
   } 
   catch (const std::exception &e) {
     std::cerr << "[RMV] std::exception caught: " << e.what() << std::endl;

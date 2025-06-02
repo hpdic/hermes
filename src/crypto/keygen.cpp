@@ -13,8 +13,15 @@ KeyPair<DCRTPoly> generateKeypair(CryptoContext<DCRTPoly> context) {
   auto kp = context->KeyGen();
   context->EvalMultKeyGen(kp.secretKey);
   context->EvalSumKeyGen(kp.secretKey);
-  context->EvalAtIndexKeyGen(kp.secretKey,
-                             {-8, -4, -2, -1, 1, 2, 4, 8}); // ✅ ADD THIS LINE
+
+  // ✅ Automatically generate ±(1, 2, 4, ..., slot_count/2)
+  const size_t slot_count = context->GetEncodingParams()->GetBatchSize();
+  std::vector<int32_t> rot_indices;
+  for (int i = 1; i < static_cast<int>(slot_count); i <<= 1) {
+    rot_indices.push_back(i);
+    rot_indices.push_back(-i);
+  }
+  context->EvalAtIndexKeyGen(kp.secretKey, rot_indices);
 
   return kp;
 }
