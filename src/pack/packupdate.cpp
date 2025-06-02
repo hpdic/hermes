@@ -87,6 +87,19 @@
 using namespace lbcrypto;
 using namespace hermes::crypto;
 
+std::string getPackedPrefix(const lbcrypto::Plaintext &pt, size_t n = 10) {
+  const auto &vec = pt->GetPackedValue();
+  std::ostringstream oss;
+  oss << "[";
+  for (size_t i = 0; i < std::min(n, vec.size()); ++i) {
+    if (i > 0)
+      oss << ", ";
+    oss << vec[i];
+  }
+  oss << "]";
+  return oss.str();
+}
+
 extern "C" {
 
 // UDF: HERMES_PACK_ADD(ciphertext, val, index)
@@ -152,6 +165,8 @@ void HERMES_PACK_ADD_deinit(UDF_INIT *initid) {
  * Last Updated: 2025-06-01
  */
 bool HERMES_PACK_RMV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+  initid->max_length = 65535;
+
   if (args->arg_count != 3 || args->arg_type[0] != STRING_RESULT ||
       args->arg_type[1] != INT_RESULT || args->arg_type[2] != INT_RESULT) {
     std::strcpy(msg, "HERMES_PACK_RMV expects (string, int, int)");
@@ -165,7 +180,6 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
   try {
     auto cc = getGC();
 
-    // Input parsing
     std::string ct_str(args->args[0], args->lengths[0]);
     int64_t index = *reinterpret_cast<long long *>(args->args[1]);
     int64_t k = *reinterpret_cast<long long *>(args->args[2]);
@@ -173,57 +187,109 @@ char *HERMES_PACK_RMV(UDF_INIT *, UDF_ARGS *args, char *result,
     auto ct = deserializeCiphertext(decodeBase64(ct_str));
     size_t slot_count = cc->GetEncodingParams()->GetBatchSize();
 
+    std::cerr << "[RMV] index = " << index << ", k = " << k
+              << ", slot_count = " << slot_count << std::endl;
+
     if (index < 0 || index >= k || k > static_cast<int64_t>(slot_count)) {
       *is_null = 1;
       *err = 1;
       return nullptr;
     }
 
-    // Prepare masks
+    auto secretKey = loadSecretKey();
+
     std::vector<int64_t> mask(slot_count, 1);
     mask[index] = 0;
     auto pt_mask = cc->MakePackedPlaintext(mask);
     pt_mask->SetLength(slot_count);
 
-    // Case 1: removing the last element
     if (index == k - 1) {
       auto ct_masked = cc->EvalMult(ct, pt_mask);
+
+      Plaintext pt;
+      cc->Decrypt(secretKey, ct_masked, &pt);
+      pt->SetLength(slot_count);
+      std::cerr << "[RMV] (tail case) after masking = " 
+                << getPackedPrefix(pt)
+                << std::endl;
+
       auto out_str = encodeBase64(serializeCiphertext(ct_masked));
       std::memcpy(result, out_str.data(), out_str.size());
       *length = out_str.size();
       return result;
     }
 
-    // Step 1: zero out slot[index]
+    // Step 1: clear index
     auto ct_cleared = cc->EvalMult(ct, pt_mask);
+    Plaintext pt1;
+    cc->Decrypt(secretKey, ct_cleared, &pt1);
+    pt1->SetLength(slot_count);
+    std::cerr << "[RMV] after clear[" << index
+              << "] = " << getPackedPrefix(pt1) << std::endl;
 
-    // Step 2: extract last slot value
+    // Step 2: extract last slot
     std::vector<int64_t> last_mask(slot_count, 0);
     last_mask[k - 1] = 1;
     auto pt_last = cc->MakePackedPlaintext(last_mask);
     pt_last->SetLength(slot_count);
     auto ct_last_val = cc->EvalMult(ct, pt_last);
+    Plaintext pt2;
+    cc->Decrypt(secretKey, ct_last_val, &pt2);
+    pt2->SetLength(slot_count);
+    std::cerr << "[RMV] extracted last slot = " << getPackedPrefix(pt2)
+              << std::endl;
 
-    // Step 3: shift last value to index position
+    // Step 3: shift to index
+    std::string keyTag = secretKey->GetKeyTag();
+    auto galoisMap = cc->GetEvalAutomorphismKeyMap(keyTag);
+    std::cerr << "[DEBUG] registered Galois keys = { ";
+    for (auto &[idx, key] : galoisMap) {
+      std::cerr << idx << " ";
+    }
+    std::cerr << "}" << std::endl;
     auto ct_shifted = cc->EvalAtIndex(ct_last_val, index - (k - 1));
+    Plaintext pt3;
+    cc->Decrypt(secretKey, ct_shifted, &pt3);
+    pt3->SetLength(slot_count);
+    std::cerr << "[RMV] shifted last slot to [" << index
+              << "] = " << getPackedPrefix(pt3) << std::endl;
 
-    // Step 4: insert value into cleared ct
+    // Step 4: insert into cleared
     auto ct_updated = cc->EvalAdd(ct_cleared, ct_shifted);
+    Plaintext pt4;
+    cc->Decrypt(secretKey, ct_updated, &pt4);
+    pt4->SetLength(slot_count);
+    std::cerr << "[RMV] after insert = " << getPackedPrefix(pt4) << std::endl;
 
-    // Step 5: clear slot[k-1] again
+    // Step 5: clear k-1 tail
     std::vector<int64_t> final_mask(slot_count, 1);
     final_mask[k - 1] = 0;
     auto pt_final_mask = cc->MakePackedPlaintext(final_mask);
     pt_final_mask->SetLength(slot_count);
     auto ct_final = cc->EvalMult(ct_updated, pt_final_mask);
+    Plaintext pt5;
+    cc->Decrypt(secretKey, ct_final, &pt5);
+    pt5->SetLength(slot_count);
+    std::cerr << "[RMV] final ciphertext = " << getPackedPrefix(pt5)
+              << std::endl;
 
-    // Output
     auto out_str = encodeBase64(serializeCiphertext(ct_final));
+    std::cerr << "[RMV] final base64 length = " << out_str.size() << std::endl;
+
     std::memcpy(result, out_str.data(), out_str.size());
     *length = out_str.size();
     return result;
 
+  } 
+  catch (const std::exception &e) {
+    std::cerr << "[RMV] std::exception caught: " << e.what() << std::endl;
+    *is_null = 1;
+    *err = 1;
+    return nullptr;
   } catch (...) {
+    std::cerr
+        << "[RMV] Unknown exception caught during ciphertext removal logic."
+        << std::endl;
     *is_null = 1;
     *err = 1;
     return nullptr;

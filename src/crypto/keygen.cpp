@@ -3,6 +3,8 @@
 // Institution: University of Washington
 // Last Updated: May 29, 2025
 
+#include "openfhe.h"
+#include "openfhecore.h"
 #include "keygen.hpp"
 
 namespace hermes::crypto {
@@ -11,6 +13,9 @@ KeyPair<DCRTPoly> generateKeypair(CryptoContext<DCRTPoly> context) {
   auto kp = context->KeyGen();
   context->EvalMultKeyGen(kp.secretKey);
   context->EvalSumKeyGen(kp.secretKey);
+  context->EvalAtIndexKeyGen(kp.secretKey,
+                             {-8, -4, -2, -1, 1, 2, 4, 8}); // ✅ ADD THIS LINE
+
   return kp;
 }
 
@@ -40,6 +45,19 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
   secout << serializeSecretKey(kp.secretKey);
   secout.close();
   std::cerr << "[INFO] Secret key written to " << kSecKeyPath << std::endl;
+
+  std::ofstream galout(kGaloisKeyPath, std::ios::binary);
+  if (!galout.is_open()) {
+    std::cerr << "[ERROR] Cannot write Galois key to " << kGaloisKeyPath
+              << std::endl;
+    std::exit(1);
+  }
+  if (!context->SerializeEvalAutomorphismKey(galout, lbcrypto::SerType::BINARY)) {
+    std::cerr << "[ERROR] Failed to serialize Galois keys" << std::endl;
+    std::exit(1);
+  }
+  galout.close();
+  std::cerr << "[INFO] Galois key written to " << kGaloisKeyPath << std::endl;
 
   return kp;
 }

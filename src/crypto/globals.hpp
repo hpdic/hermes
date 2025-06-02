@@ -25,5 +25,6 @@ namespace hermes::crypto {
 inline const std::string kKeyDir = "/tmp/hermes";
 inline const std::string kPubKeyPath = kKeyDir + "/hermes_pub.key";
 inline const std::string kSecKeyPath = kKeyDir + "/hermes_sec.key";
+inline const std::string kGaloisKeyPath = kKeyDir + "/hermes_galois.key";
 
 } // namespace hermes::crypto

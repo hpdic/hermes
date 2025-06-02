@@ -10,6 +10,8 @@
  */
 
 #include "context.hpp"
+#include "globals.hpp"
+#include "keygen.hpp"
 
 using namespace lbcrypto;
 
@@ -65,9 +67,36 @@ CryptoContext<DCRTPoly> makeBfvContext() {
   return cc;
 }
 
+// CryptoContext<DCRTPoly> getGC() {
+//   static CryptoContext<DCRTPoly> global_ctx = makeBfvContext();
+//   return global_ctx;
+// }
+
+CryptoContext<DCRTPoly> loadContextWithGaloisKeysOnly() {
+  auto cc = makeBfvContext(); // 只创建 context，不注册密钥
+
+  // 1. 加载并注册 EvalAutomorphismKeys
+  std::ifstream galin(kGaloisKeyPath, std::ios::binary);
+  if (!galin.is_open()) {
+    std::cerr << "[ERROR] Cannot open Galois key file: " << kGaloisKeyPath
+              << "\n";
+    std::exit(1);
+  }
+
+  if (!cc->DeserializeEvalAutomorphismKey(galin, SerType::BINARY)) {
+    std::cerr << "[ERROR] Failed to deserialize Galois keys.\n";
+    std::exit(1);
+  }
+
+  galin.close();
+  return cc;
+}
+
 CryptoContext<DCRTPoly> getGC() {
-  static CryptoContext<DCRTPoly> global_ctx = makeBfvContext();
+  static CryptoContext<DCRTPoly> global_ctx = loadContextWithGaloisKeysOnly();
   return global_ctx;
 }
 
-}
+} // namespace hermes::crypto
+// EOF: context.cpp
+// ------------------------------------------------------------------------
