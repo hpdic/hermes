@@ -11,9 +11,10 @@ if [[ -z "$1" ]]; then
 fi
 
 TABLE="$1"
+PREFIX="${TABLE#tbl_}"  # e.g., tbl_bitcoin → bitcoin
 OUT_DIR="./experiments/result"
 mkdir -p "$OUT_DIR"
-OUT_FILE="${OUT_DIR}/loading_eval_${TABLE}.txt"
+OUT_FILE="${OUT_DIR}/load_${TABLE}.txt"
 
 echo "[*] Running loading experiment on table: $TABLE" | tee "$OUT_FILE"
 total_rows=$(mysql -u "$MYSQL_USER" -D "$MYSQL_DB" -sN -e "SELECT COUNT(*) FROM $TABLE;")
@@ -68,6 +69,9 @@ echo "SINGULAR: total=${elapsed_sing} ms" | tee -a "$OUT_FILE"
 #######################################
 echo "" | tee -a "$OUT_FILE"
 echo "------ Summary (table: $TABLE) ------" | tee -a "$OUT_FILE"
+echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$OUT_FILE"
+echo "Host: $(hostname)" | tee -a "$OUT_FILE"
+echo "Kernel: $(uname -r)" | tee -a "$OUT_FILE"
 echo "Total tuples: $total_rows" | tee -a "$OUT_FILE"
 echo "Packed Encrypt:   $elapsed_pack ms (avg: $((elapsed_pack * 1000 / total_rows)) µs/row)" | tee -a "$OUT_FILE"
 echo "Singular Encrypt: $elapsed_sing ms (avg: $((elapsed_sing * 1000 / total_rows)) µs/row)" | tee -a "$OUT_FILE"

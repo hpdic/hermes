@@ -1,3 +1,4 @@
+
 # Hermes: MySQL Plugin for Homomorphic Encryption
 
 **Hermes** stands for **Homomorphic Encryption for Relational MySQL Engine Support**.  
@@ -43,7 +44,19 @@ Build and test with:
 ./script/run_pack.sh            # Run packed vector + summation demo
 ```
 
-For full installation instructions, see [INSTALL.md](./INSTALL.md).
+---
+
+## 🧪 Reproducible Experiments
+
+To run the benchmark suite:
+
+```bash
+./experiments/script/load_csv.sh        # Load data into MySQL
+./experiments/script/convert_csv.sh     # Preprocess and assign group IDs
+./experiments/script/run_all.sh         # Evaluate encryption, insert, delete
+```
+
+This will produce results in `./experiments/result/*.txt`, covering all three datasets: `covid19`, `bitcoin`, and `hg38`.
 
 ---
 
