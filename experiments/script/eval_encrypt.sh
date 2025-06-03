@@ -14,9 +14,9 @@ TABLE="$1"
 PREFIX="${TABLE#tbl_}"  # e.g., tbl_bitcoin → bitcoin
 OUT_DIR="./experiments/result"
 mkdir -p "$OUT_DIR"
-OUT_FILE="${OUT_DIR}/load_${TABLE}.txt"
+OUT_FILE="${OUT_DIR}/encrypt_${PREFIX}.txt"
 
-echo "[*] Running loading experiment on table: $TABLE" | tee "$OUT_FILE"
+echo "[*] Running encryption experiment on table: $TABLE" | tee "$OUT_FILE"
 total_rows=$(mysql -u "$MYSQL_USER" -D "$MYSQL_DB" -sN -e "SELECT COUNT(*) FROM $TABLE;")
 echo "[*] Total rows: $total_rows" | tee -a "$OUT_FILE"
 

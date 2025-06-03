@@ -18,7 +18,7 @@ OUT_DIR="./experiments/result"
 OUT_FILE="${OUT_DIR}/insert_${PREFIX}.txt"
 
 mkdir -p "$OUT_DIR"
-echo "[*] Insert experiment on table: $TABLE" | tee -a "$OUT_FILE"
+echo "[*] Insert experiment on table: $TABLE" | tee "$OUT_FILE"
 
 #######################################
 # Step 1: Create temporary tables

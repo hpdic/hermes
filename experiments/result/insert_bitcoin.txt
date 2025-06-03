@@ -1,27 +1,14 @@
 [*] Insert experiment on table: tbl_bitcoin
 [*] Loading group_id = 1 data into temp tables...
-[*] Insert experiment on table: tbl_bitcoin
-[*] Loading group_id = 1 data into temp tables...
 [*] Generating 100 random inserts...
 [*] Running PACK inserts...
-PACK-INSERT: total=3626 ms
+PACK-INSERT: total=632 ms
 [*] Running SINGULAR inserts...
-SINGULAR-INSERT: total=1991 ms
+SINGULAR-INSERT: total=2026 ms
 
 ------ Summary (insert eval on tbl_bitcoin, group_id=1) ------
-Packed Insert:   3626 ms (avg: 36260 µs/op)
-Singular Insert: 1991 ms (avg: 19910 µs/op)
-[*] Insert experiment on table: tbl_bitcoin
-[*] Loading group_id = 1 data into temp tables...
-[*] Generating 100 random inserts...
-[*] Running PACK inserts...
-PACK-INSERT: total=660 ms
-[*] Running SINGULAR inserts...
-SINGULAR-INSERT: total=2007 ms
-
------- Summary (insert eval on tbl_bitcoin, group_id=1) ------
-Timestamp: 2025-06-03 07:16:18
+Timestamp: 2025-06-03 07:37:28
 Host: fhe
 Kernel: 6.8.0-59-generic
-Packed Insert:   660 ms (avg: 6600 µs/op)
-Singular Insert: 2007 ms (avg: 20070 µs/op)
+Packed Insert:   632 ms (avg: 6320 µs/op)
+Singular Insert: 2026 ms (avg: 20260 µs/op)

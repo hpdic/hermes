@@ -19,7 +19,7 @@ OUT_FILE="${OUT_DIR}/remove_${PREFIX}.txt"
 ORIGINAL_GROUP_SIZE=8192
 
 mkdir -p "$OUT_DIR"
-echo "[*] Remove experiment on table: $TABLE" | tee -a "$OUT_FILE"
+echo "[*] Remove experiment on table: $TABLE" | tee "$OUT_FILE"
 
 #######################################
 # Step 1: Assume temporary tables already exist from previous insert test
