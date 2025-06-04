@@ -5,16 +5,20 @@ export MYSQL_PWD="hpdic2023"
 MYSQL_USER="hpdic"
 MYSQL_DB="hermes_apps"
 
-if [[ -z "$1" ]]; then
-  echo "Usage: $0 <table_name>"
+if [[ -z "$1" || -z "$2" ]]; then
+  echo "Usage: $0 <table_name> <pack_size>"
+  echo "  <pack_size> must be a positive integer ≤ 8192."
+  echo "  ⚠️ Note: Although 8192 is the maximum, we recommend using 4096 or smaller for performance and memory stability."
   exit 1
 fi
 
 TABLE="$1"
+SIZE_PACK="$2"
+
 PREFIX="${TABLE#tbl_}"  # e.g., tbl_bitcoin → bitcoin
 OUT_DIR="./experiments/result"
 mkdir -p "$OUT_DIR"
-OUT_FILE="${OUT_DIR}/encrypt_${PREFIX}.txt"
+OUT_FILE="${OUT_DIR}/encrypt_${PREFIX}_${SIZE_PACK}.txt"
 
 echo "[*] Running encryption experiment on table: $TABLE" | tee "$OUT_FILE"
 total_rows=$(mysql -u "$MYSQL_USER" -D "$MYSQL_DB" -sN -e "SELECT COUNT(*) FROM $TABLE;")

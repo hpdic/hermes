@@ -4,7 +4,19 @@ set -e
 echo "[*] Converting raw data to CSV format..."
 
 # Default group size
-GROUP_SIZE=${GROUP_SIZE:-8192}
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <pack_size>"
+  echo "  ⚠️ Max pack_size = 8192; recommended ≤ 4096 for performance."
+  exit 1
+fi
+
+PACK_SIZE="$1"
+
+if (( PACK_SIZE > 8192 )); then
+  echo "Error: pack_size must be ≤ 8192"
+  exit 1
+fi
+
 TMP_DIR="./tmp"
 mkdir -p "$TMP_DIR"
 
@@ -15,7 +27,7 @@ convert() {
 
     echo "[*] Processing $input → $output"
 
-    awk -v gsize="$GROUP_SIZE" -v colname="$colname" '
+    awk -v gsize="$PACK_SIZE" -v colname="$colname" '
     BEGIN {
         OFS=",";
         print "id", "group_id", colname;

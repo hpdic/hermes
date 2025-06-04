@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# Default group size
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <pack_size>"
+  echo "  ⚠️ Max pack_size = 8192; recommended ≤ 4096 for performance."
+  exit 1
+fi
+
+PACK_SIZE="$1"
+
+if (( PACK_SIZE > 8192 )); then
+  echo "Error: pack_size must be ≤ 8192"
+  exit 1
+fi
+
 export MYSQL_PWD="hpdic2023"
 MYSQL_USER="hpdic"
 MYSQL_DB="hermes_apps"
@@ -22,7 +36,7 @@ echo "[*] Starting full Hermes evaluation..."
 #######################################
 echo ""
 echo "[=] Step 0a: Converting raw data to CSV..."
-bash "$CONVERT_SCRIPT"
+bash "$CONVERT_SCRIPT" "$PACK_SIZE"
 
 #######################################
 # Step 0b: Load CSV into MySQL
@@ -39,7 +53,7 @@ echo "[=] Step 1: Encryption Experiments"
 for TABLE in "${DATASETS[@]}"; do
   echo ""
   echo "[+] Running encryption on $TABLE"
-  bash "$ENCRYPT_SCRIPT" "$TABLE"
+  bash "$ENCRYPT_SCRIPT" "$TABLE" "$PACK_SIZE"
 done
 
 #######################################
@@ -50,7 +64,7 @@ echo "[=] Step 2: Insert Experiments"
 for TABLE in "${DATASETS[@]}"; do
   echo ""
   echo "[+] Running insert on $TABLE"
-  bash "$INSERT_SCRIPT" "$TABLE"
+  bash "$INSERT_SCRIPT" "$TABLE" "$PACK_SIZE"
 done
 
 #######################################
@@ -61,7 +75,7 @@ echo "[=] Step 3: Remove Experiments"
 for TABLE in "${DATASETS[@]}"; do
   echo ""
   echo "[+] Running remove on $TABLE"
-  bash "$REMOVE_SCRIPT" "$TABLE"
+  bash "$REMOVE_SCRIPT" "$TABLE" "$PACK_SIZE"
 done
 
 echo ""

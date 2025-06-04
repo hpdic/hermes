@@ -5,18 +5,20 @@ export MYSQL_PWD="hpdic2023"
 MYSQL_USER="hpdic"
 MYSQL_DB="hermes_apps"
 
-if [[ -z "$1" ]]; then
-  echo "Usage: $0 <table_name> (e.g., tbl_covid19)"
+if [[ -z "$1" || -z "$2" ]]; then
+  echo "Usage: $0 <table_name> <pack_size>"
+  echo "  <pack_size> must be a positive integer ≤ 8192."
+  echo "  ⚠️ Note: Although 8192 is the maximum, we recommend using 4096 or smaller for performance and memory stability."
   exit 1
 fi
-
 TABLE="$1"
+SIZE_PACK="$2"
+
 PREFIX="${TABLE#tbl_}"
 PACK_TABLE="tbl_${PREFIX}_pack"
 SINGULAR_TABLE="tbl_${PREFIX}_singular"
 OUT_DIR="./experiments/result"
-OUT_FILE="${OUT_DIR}/remove_${PREFIX}.txt"
-ORIGINAL_GROUP_SIZE=8192
+OUT_FILE="${OUT_DIR}/remove_${PREFIX}_${SIZE_PACK}.txt"
 
 mkdir -p "$OUT_DIR"
 echo "[*] Remove experiment on table: $TABLE" | tee "$OUT_FILE"
@@ -30,20 +32,28 @@ echo "[*] Remove experiment on table: $TABLE" | tee "$OUT_FILE"
 #######################################
 echo "[*] Generating 100 deletes..." | tee -a "$OUT_FILE"
 
-remove_pack=""
-remove_singular=""
+# 只查询一次当前 slot count
+slot_count=$(mysql -N -u "$MYSQL_USER" -D "$MYSQL_DB" -e \
+  "SELECT slot_count FROM $PACK_TABLE WHERE group_id = 1 LIMIT 1;")
 
-k=$ORIGINAL_GROUP_SIZE
+if (( slot_count <= 1 )); then
+  echo "[!] Not enough slots to perform deletion." | tee -a "$OUT_FILE"
+  exit 1
+fi
+
+remove_pack=""
+k=$slot_count  # 当前可用 slot 数（包括最后的 sum slot）
 for ((i = 0; i < 100; i++)); do
-  slot=$((RANDOM % (k - 1)))
+  # 每轮随机选一个合法位置删（除去最后 slot）
+  slot=$((RANDOM % (slot_count - 2)))
   remove_pack+="SELECT HERMES_PACK_RMV(ctxt_repr, $slot, $k) FROM $PACK_TABLE WHERE group_id = 1;\n"
-  ((k--))
+  ((k--))  # 下一轮减少 1
 done
 
 # Get first 100 IDs from singular table (ascending order)
 ids_to_delete=$(mysql -u "$MYSQL_USER" -D "$MYSQL_DB" -sN -e "
   SELECT id FROM $SINGULAR_TABLE ORDER BY id ASC LIMIT 100;")
-
+remove_singular=""
 for id in $ids_to_delete; do
   remove_singular+="DELETE FROM $SINGULAR_TABLE WHERE id = $id;\n"
 done
@@ -57,6 +67,9 @@ echo -e "$remove_pack" | mysql -u "$MYSQL_USER" -D "$MYSQL_DB" > /dev/null
 end_pack=$(date +%s%3N)
 elapsed_pack=$((end_pack - start_pack))
 echo "PACK-REMOVE: total=${elapsed_pack} ms" | tee -a "$OUT_FILE"
+# 最后统一更新 slot_count
+mysql -u "$MYSQL_USER" -D "$MYSQL_DB" -e \
+  "UPDATE $PACK_TABLE SET slot_count = slot_count - 100 WHERE group_id = 1;"
 
 #######################################
 # Step 4: Time SINGULAR DELETE
