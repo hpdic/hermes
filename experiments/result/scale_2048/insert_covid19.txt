@@ -1,0 +1,14 @@
+[*] Insert experiment on table: tbl_covid19
+[*] Loading group_id = 1 data into temp tables...
+[*] Generating 100 inserts...
+[*] Running PACK inserts...
+PACK-INSERT: total=642 ms
+[*] Running SINGULAR inserts...
+SINGULAR-INSERT: total=1993 ms
+
+------ Summary (insert eval on tbl_covid19, group_id=1) ------
+Timestamp: 2025-06-04 21:49:39
+Host: fhe
+Kernel: 6.8.0-59-generic
+Packed Insert:   642 ms (avg: 6420 µs/op)
+Singular Insert: 1993 ms (avg: 19930 µs/op)

@@ -1,0 +1,14 @@
+[*] Running encryption experiment on table: tbl_bitcoin
+[*] Total rows: 1086
+[*] Timing HERMES_PACK_CONVERT (group-wise)...
+PACKED: total=57 ms
+[*] Timing HERMES_ENC_SINGULAR (bulk SELECT)...
+SINGULAR: total=16370 ms
+
+------ Summary (table: tbl_bitcoin) ------
+Timestamp: 2025-06-04 21:40:58
+Host: fhe
+Kernel: 6.8.0-59-generic
+Total tuples: 1086
+Packed Encrypt:   57 ms (avg: 52 µs/row)
+Singular Encrypt: 16370 ms (avg: 15073 µs/row)

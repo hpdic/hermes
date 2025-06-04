@@ -1,0 +1,13 @@
+[*] Remove experiment on table: tbl_hg38
+[*] Generating 100 deletes...
+[*] Running PACK removes...
+PACK-REMOVE: total=1509 ms
+[*] Running SINGULAR deletes...
+SINGULAR-REMOVE: total=531 ms
+
+------ Summary (remove eval on tbl_hg38, group_id=1) ------
+Timestamp: 2025-06-04 21:50:32
+Host: fhe
+Kernel: 6.8.0-59-generic
+Packed Remove:   1509 ms (avg: 15090 µs/op)
+Singular Remove: 531 ms (avg: 5310 µs/op)

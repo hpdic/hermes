@@ -18,7 +18,7 @@ PREFIX="${TABLE#tbl_}"
 PACK_TABLE="tbl_${PREFIX}_pack"
 SINGULAR_TABLE="tbl_${PREFIX}_singular"
 OUT_DIR="./experiments/result"
-OUT_FILE="${OUT_DIR}/remove_${PREFIX}_${SIZE_PACK}.txt"
+OUT_FILE="${OUT_DIR}/scale_${SIZE_PACK}/remove_${PREFIX}.txt"
 
 mkdir -p "$OUT_DIR"
 echo "[*] Remove experiment on table: $TABLE" | tee "$OUT_FILE"

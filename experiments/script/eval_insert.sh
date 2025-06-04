@@ -18,7 +18,7 @@ PREFIX="${TABLE#tbl_}"  # e.g., tbl_bitcoin → bitcoin
 PACK_TABLE="tbl_${PREFIX}_pack"
 SINGULAR_TABLE="tbl_${PREFIX}_singular"
 OUT_DIR="./experiments/result"
-OUT_FILE="${OUT_DIR}/insert_${PREFIX}_${SIZE_PACK}.txt"
+OUT_FILE="${OUT_DIR}/scale_${SIZE_PACK}/insert_${PREFIX}.txt"
 
 mkdir -p "$OUT_DIR"
 echo "[*] Insert experiment on table: $TABLE" | tee "$OUT_FILE"

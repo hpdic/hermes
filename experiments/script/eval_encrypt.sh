@@ -16,9 +16,9 @@ TABLE="$1"
 SIZE_PACK="$2"
 
 PREFIX="${TABLE#tbl_}"  # e.g., tbl_bitcoin → bitcoin
-OUT_DIR="./experiments/result"
+OUT_DIR="./experiments/result/scale_${SIZE_PACK}"
 mkdir -p "$OUT_DIR"
-OUT_FILE="${OUT_DIR}/encrypt_${PREFIX}_${SIZE_PACK}.txt"
+OUT_FILE="${OUT_DIR}/encrypt_${PREFIX}.txt"
 
 echo "[*] Running encryption experiment on table: $TABLE" | tee "$OUT_FILE"
 total_rows=$(mysql -u "$MYSQL_USER" -D "$MYSQL_DB" -sN -e "SELECT COUNT(*) FROM $TABLE;")
