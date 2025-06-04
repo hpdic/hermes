@@ -34,7 +34,6 @@ CREATE TABLE $PACK_TABLE (
   slot_count INT,
   ctxt_repr LONGTEXT
 );
-EOF
 
 DROP TABLE IF EXISTS $SINGULAR_TABLE;
 CREATE TABLE $SINGULAR_TABLE (
@@ -72,9 +71,9 @@ else
 fi
 
 #######################################
-# Step 3: Generate 100 random inserts
+# Step 3: Generate 100 inserts
 #######################################
-echo "[*] Generating 100 random inserts..." | tee -a "$OUT_FILE"
+echo "[*] Generating 100 inserts..." | tee -a "$OUT_FILE"
 
 # 读取 slot_count 值（假设只有一个 ciphertext，group_id = 1）
 slot_count=$(mysql -N -B -u "$MYSQL_USER" -D "$MYSQL_DB" -e "

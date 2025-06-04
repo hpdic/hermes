@@ -1,0 +1,14 @@
+[*] Insert experiment on table: tbl_hg38
+[*] Loading group_id = 1 data into temp tables...
+[*] Generating 100 random inserts...
+[*] Running PACK inserts...
+PACK-INSERT: total=3394 ms
+[*] Running SINGULAR inserts...
+SINGULAR-INSERT: total=2009 ms
+
+------ Summary (insert eval on tbl_hg38, group_id=1) ------
+Timestamp: 2025-06-04 19:36:10
+Host: fhe
+Kernel: 6.8.0-59-generic
+Packed Insert:   3394 ms (avg: 33940 µs/op)
+Singular Insert: 2009 ms (avg: 20090 µs/op)
