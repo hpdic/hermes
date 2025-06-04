@@ -89,7 +89,7 @@ insert_singular=""
 
 for ((i = 0; i < 100; i++)); do
   val=$((10 + RANDOM % 990))
-  slot=$((slot_count + i))  # 从当前slot_count往后插
+  slot=$((slot_count + i))  # Always insert into the next slot after the last used slot
   insert_pack+="SELECT HERMES_PACK_ADD(ctxt_repr, $slot, $val) FROM $PACK_TABLE WHERE group_id = 1;\n"
   insert_singular+="INSERT INTO $SINGULAR_TABLE(value, ctxt_repr) VALUES ($val, HERMES_ENC_SINGULAR($val));\n"
 done

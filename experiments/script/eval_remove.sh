@@ -32,7 +32,7 @@ echo "[*] Remove experiment on table: $TABLE" | tee "$OUT_FILE"
 #######################################
 echo "[*] Generating 100 deletes..." | tee -a "$OUT_FILE"
 
-# 只查询一次当前 slot count
+# Retrieve slot count
 slot_count=$(mysql -N -u "$MYSQL_USER" -D "$MYSQL_DB" -e \
   "SELECT slot_count FROM $PACK_TABLE WHERE group_id = 1 LIMIT 1;")
 
@@ -42,12 +42,11 @@ if (( slot_count <= 1 )); then
 fi
 
 remove_pack=""
-k=$slot_count  # 当前可用 slot 数（包括最后的 sum slot）
+k=$slot_count  
 for ((i = 0; i < 100; i++)); do
-  # 每轮随机选一个合法位置删（除去最后 slot）
   slot=$((RANDOM % (slot_count - 2)))
   remove_pack+="SELECT HERMES_PACK_RMV(ctxt_repr, $slot, $k) FROM $PACK_TABLE WHERE group_id = 1;\n"
-  ((k--))  # 下一轮减少 1
+  ((k--))  
 done
 
 # Get first 100 IDs from singular table (ascending order)

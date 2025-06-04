@@ -1,4 +1,27 @@
 #!/bin/bash
+# 
+# Hermes Full Evaluation Script
+# -----------------------------
+# This script runs the full Hermes experimental pipeline:
+#   (1) Convert raw input into CSV
+#   (2) Load CSV into MySQL
+#   (3) Encrypt with pack-based and singular ciphertexts
+#   (4) Evaluate packed and singular insert performance
+#   (5) Evaluate packed and singular deletion performance
+#
+# ⛔️ pack_size must be ≤ 8192 due to FHE ring dimension limits:
+#   - Hermes uses the BFV encryption scheme via OpenFHE.
+#   - Each ciphertext supports N/2 SIMD slots, where N is the ring dimension.
+#   - For N = 16384 (OpenFHE default), we get 8192 usable slots per ciphertext.
+#   - Setting pack_size > 8192 will exceed the ciphertext capacity and cause errors.
+#
+# ✅ Recommended:
+#   - Use pack_size = 4096 or smaller for better performance and noise stability.
+#   - Example: ./experiments/script/eval_all.sh 4096
+#
+# Usage:
+#   ./eval_all.sh <pack_size>
+
 set -e
 
 # Default group size
