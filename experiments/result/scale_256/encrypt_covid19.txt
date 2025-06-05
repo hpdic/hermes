@@ -1,0 +1,14 @@
+[*] Running encryption experiment on table: tbl_covid19
+[*] Total rows: 341
+[*] Timing HERMES_PACK_CONVERT (group-wise)...
+PACKED: total=79 ms
+[*] Timing HERMES_ENC_SINGULAR (bulk SELECT)...
+SINGULAR: total=5176 ms
+
+------ Summary (table: tbl_covid19) ------
+Timestamp: 2025-06-04 22:58:13
+Host: fhe
+Kernel: 6.8.0-59-generic
+Total tuples: 341
+Packed Encrypt:   79 ms (avg: 231 µs/row)
+Singular Encrypt: 5176 ms (avg: 15178 µs/row)
