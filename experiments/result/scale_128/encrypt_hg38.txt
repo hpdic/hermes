@@ -1,0 +1,14 @@
+[*] Running encryption experiment on table: tbl_hg38
+[*] Total rows: 34424
+[*] Timing HERMES_PACK_CONVERT (group-wise)...
+PACKED: total=8321 ms
+[*] Timing HERMES_ENC_SINGULAR (bulk SELECT)...
+SINGULAR: total=509143 ms
+
+------ Summary (table: tbl_hg38) ------
+Timestamp: 2025-06-05 00:15:28
+Host: fhe
+Kernel: 6.8.0-59-generic
+Total tuples: 34424
+Packed Encrypt:   8321 ms (avg: 241 µs/row)
+Singular Encrypt: 509143 ms (avg: 14790 µs/row)
