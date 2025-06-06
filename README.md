@@ -8,6 +8,18 @@ The name is also inspired by *Hermes*, the Greek god of communication, reflectin
 
 ---
 
+## 🧠 Academic Background
+
+Hermes is part of an academic research initiative at the University of Washington, aiming to bridge modern cryptography and database systems. It is the first system to integrate fully homomorphic encryption (FHE) directly into a production-grade SQL engine, supporting vectorized queries with provable security guarantees.
+
+The system and its contributions are formally described in the following research paper:
+
+> **Hermes: Practical Vectorized Query Processing over Homomorphically Encrypted Relational Databases**  
+> *Dongfang Zhao*  
+> [https://arxiv.org/abs/2506.03308](https://arxiv.org/abs/2506.03308)
+
+Please cite the paper if you use Hermes in academic publications.
+
 ## 🔐 Key Features
 
 Hermes exposes the following homomorphic encryption UDFs as native SQL functions. Each UDF is implemented in a corresponding `.so` plugin module:
