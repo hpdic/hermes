@@ -85,9 +85,9 @@ Hermes is designed to:
 
 ## 📬 Contact
 
-(c) 2025, HPDIC Lab, University of Washington  
-Author: **Dr. Dongfang Zhao**  
-📧 Email: <dzhao@cs.washington.edu>
+(c) 2025, HPDIC Lab, https://hpdic.github.io  
+Author: **Dongfang Zhao**  
+📧 Email: <dongfang.zhao@gmail.com>
 
 ---
 
