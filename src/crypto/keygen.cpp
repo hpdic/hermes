@@ -91,8 +91,13 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
 }
 
 PublicKey<DCRTPoly> loadPublicKey() {
+  std::cerr << "HPDIC DEBUG " << __FILE__ << ":" << __LINE__ << " called" << std::endl;
+
   std::ifstream in(kPubKeyPath, std::ios::binary);
   if (!in) {
+
+    std::cerr << "HPDIC DEBUG " << __FILE__ << ":" << __LINE__ << " called" << std::endl;
+
     throw std::runtime_error("[loadPublicKey] Failed to open public key file.");
   }
   std::string str((std::istreambuf_iterator<char>(in)),

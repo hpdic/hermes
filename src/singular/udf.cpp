@@ -75,11 +75,34 @@ char *HERMES_ENC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
     std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
 
     int64_t val = *reinterpret_cast<long long *>(args->args[0]);
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+    std::cerr << "val = " << val << std::endl;
+
     auto ctx = makeBfvContext();
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+    std::cerr << "ctx = " << ctx << std::endl;
+
     auto pk = loadPublicKey();
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+    std::cerr << "pk = " << pk << std::endl;
+
     auto pt = ctx->MakePackedPlaintext({val});
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+    std::cerr << "pt = " << pt << std::endl;
+
     pt->SetLength(1);
-    auto ct = ctx->Encrypt(pk, pt);
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+
+    auto ct = ctx->Encrypt(pk, pt); 
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+    std::cerr << "ct = " << ct << std::endl;
+
     std::string encoded = encodeBase64(serializeCiphertext(ct));
     *len = encoded.size();
     
