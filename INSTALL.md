@@ -1,4 +1,4 @@
-# Update on 11/9/2025, for CloudLab, assuming OpenFHE is installed
+# Update on 11/10/2025, for CloudLab, assuming OpenFHE is installed: https://github.com/hpdic/openfhe-development
 
 ## MySQL
 ```bash
@@ -59,14 +59,14 @@ This is how I debug. You want to have two terminals. Maybe the upper terminal is
 ```bash
 donzhao@node0:~/hermes$ mysql -u hpdic -e "use hpdic_db; select id, salary, hermes_enc_singular_bfv(salary) from employee_grouped;"
 ```
-And the lower one is to recompile the changed code and check the MySQL log:
+And the lower one is to recompile the changed code with error messages (e.g., `std::cerr << __FILE__ << ":" __LINE__ << std::endl;`) and check the MySQL log:
 ```bash
 donzhao@node0:~/hermes$ ./scripts/build.sh 
 donzhao@node0:~/hermes$ sudo tail /var/log/mysql/error.log -n10
 ```
 
 ## VS Code
-If you use VS Code, please add the following to the include the MySQL path
+If you use VS Code, you might need to manually add the following to help VS Code find the MySQL headers:
 ```
 /usr/include/mysql/**
 ```
