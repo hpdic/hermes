@@ -126,6 +126,22 @@ CryptoContext<DCRTPoly> loadContextWithGaloisKeysOnly() {
   }
 
   galin.close();
+
+  // 2. Load and register relin keys (EvalMult keys)
+  std::ifstream relinin(kRelinKeyPath, std::ios::binary);
+  if (!relinin.is_open()) {
+    std::cerr << "[ERROR] Cannot open Relin key file: " << kRelinKeyPath
+              << "\n";
+    std::exit(1);
+  }
+
+  if (!cc->DeserializeEvalMultKey(relinin, SerType::BINARY)) {
+    std::cerr << "[ERROR] Failed to deserialize Relin keys.\n";
+    std::exit(1);
+  }
+
+  relinin.close();
+
   return cc;
 }
 

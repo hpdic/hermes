@@ -4,7 +4,11 @@ project(hermes_singular_udf)
 # Build the singular UDF plugin as a shared library
 add_library(hermes_singular_udf SHARED
     udf.cpp
-)
+    ../crypto/base64.cpp
+    ../crypto/context.cpp
+    ../crypto/encrypt.cpp
+    ../crypto/keygen.cpp
+    ../crypto/serialize.cpp)
 
 # Include directories
 target_include_directories(hermes_singular_udf PRIVATE

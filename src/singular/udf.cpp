@@ -53,6 +53,7 @@ using hermes::crypto::makeBfvContext;
 using hermes::crypto::serializeCiphertext;
 using hermes::crypto::kPubKeyPath;
 using hermes::crypto::kSecKeyPath;
+using hermes::crypto::getGC;
 
 extern "C" {
 
@@ -71,44 +72,17 @@ bool HERMES_ENC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_ENC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
                               unsigned long *len, char *is_null, char *err) {
   try {
-
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-
     int64_t val = *reinterpret_cast<long long *>(args->args[0]);
 
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-    std::cerr << "val = " << val << std::endl;
-
     auto ctx = makeBfvContext();
-
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-    std::cerr << "ctx = " << ctx << std::endl;
-
     auto pk = loadPublicKey();
-
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-    std::cerr << "pk = " << pk << std::endl;
-
     auto pt = ctx->MakePackedPlaintext({val});
-
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-    std::cerr << "pt = " << pt << std::endl;
-
     pt->SetLength(1);
 
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-
     auto ct = ctx->Encrypt(pk, pt); 
-
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-    std::cerr << "ct = " << ct << std::endl;
-
     std::string encoded = encodeBase64(serializeCiphertext(ct));
     *len = encoded.size();
     
-    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
-    std::cerr << "encoded = " << encoded << std::endl;
-
     return strdup(encoded.c_str());
   } catch (...) {
     *is_null = 1;
@@ -163,7 +137,7 @@ bool HERMES_MUL_SCALAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_MUL_SCALAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
                             unsigned long *length, char *is_null, char *error) {
   try {
-    auto ctx = makeBfvContext();
+    auto ctx = getGC();
     std::string ct_str(args->args[0], args->lengths[0]);
     Ciphertext<DCRTPoly> ct = deserializeCiphertext(decodeBase64(ct_str));
     int64_t scalar = std::stoll(std::string(args->args[1], args->lengths[1]));
@@ -196,12 +170,14 @@ bool HERMES_MUL_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_MUL_BFV(UDF_INIT *, UDF_ARGS *args, char *, unsigned long *len,
                      char *is_null, char *error) {
   try {
-    auto ctx = makeBfvContext();
+    auto ctx = getGC();
     std::string ct1_str(args->args[0], args->lengths[0]);
     std::string ct2_str(args->args[1], args->lengths[1]);
+
     auto ct1 = deserializeCiphertext(decodeBase64(ct1_str));
     auto ct2 = deserializeCiphertext(decodeBase64(ct2_str));
     auto result = ctx->EvalMult(ct1, ct2);
+
     std::string encoded = encodeBase64(serializeCiphertext(result));
     *len = encoded.size();
     return strdup(encoded.c_str());

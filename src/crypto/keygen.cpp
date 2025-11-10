@@ -54,6 +54,7 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
 
   KeyPair<DCRTPoly> kp = generateKeypair(context);
 
+  // Serialize public key
   std::ofstream pubout(kPubKeyPath, std::ios::binary);
   if (!pubout.is_open()) {
     std::cerr << "[ERROR] Cannot write public key to " << kPubKeyPath
@@ -64,6 +65,7 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
   pubout.close();
   std::cerr << "[INFO] Public key written to " << kPubKeyPath << std::endl;
 
+  // Serialize private key
   std::ofstream secout(kSecKeyPath, std::ios::binary);
   if (!secout.is_open()) {
     std::cerr << "[ERROR] Cannot write secret key to " << kSecKeyPath
@@ -74,6 +76,7 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
   secout.close();
   std::cerr << "[INFO] Secret key written to " << kSecKeyPath << std::endl;
 
+  // Serialize Galois keys
   std::ofstream galout(kGaloisKeyPath, std::ios::binary);
   if (!galout.is_open()) {
     std::cerr << "[ERROR] Cannot write Galois key to " << kGaloisKeyPath
@@ -86,6 +89,20 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
   }
   galout.close();
   std::cerr << "[INFO] Galois key written to " << kGaloisKeyPath << std::endl;
+
+  // Serialize Relin key
+  std::ofstream relout(kRelinKeyPath, std::ios::binary);
+  if (!relout.is_open()) {
+    std::cerr << "[ERROR] Cannot write Relin key to " << kRelinKeyPath
+              << std::endl;
+    std::exit(1);
+  }
+  if (!context->SerializeEvalMultKey(relout, lbcrypto::SerType::BINARY)) {
+    std::cerr << "[ERROR] Failed to serialize Relin keys" << std::endl;
+    std::exit(1);
+  }
+  relout.close();
+  std::cerr << "[INFO] Relin key written to " << kRelinKeyPath << std::endl;
 
   return kp;
 }
