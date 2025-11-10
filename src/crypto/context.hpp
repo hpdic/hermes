@@ -52,9 +52,8 @@
  *     auto ct  = ctx->Encrypt(pk, pt);
  *
  * AUTHOR:
- *   Dongfang Zhao (dzhao@cs.washington.edu)
- *   University of Washington
- *   Last Updated: May 31, 2025
+ *   Dongfang Zhao, dongfang.zhao@gmail.com
+ *   Last Updated: November 9, 2025
  */
 
 #pragma once
@@ -66,5 +65,6 @@ lbcrypto::CryptoContext<lbcrypto::DCRTPoly> makeBfvContext();
 
 // Global singleton access
 lbcrypto::CryptoContext<lbcrypto::DCRTPoly> getGC();
+lbcrypto::CryptoContext<lbcrypto::DCRTPoly> getGC_relin();
 
 } // namespace hermes::crypto

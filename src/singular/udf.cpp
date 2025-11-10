@@ -51,7 +51,7 @@ using hermes::crypto::makeBfvContext;
 using hermes::crypto::serializeCiphertext;
 using hermes::crypto::kPubKeyPath;
 using hermes::crypto::kSecKeyPath;
-using hermes::crypto::getGC;
+using hermes::crypto::getGC_relin;
 
 extern "C" {
 
@@ -135,7 +135,7 @@ bool HERMES_MUL_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_MUL_BFV(UDF_INIT *, UDF_ARGS *args, char *, unsigned long *len,
                      char *is_null, char *error) {
   try {
-    auto ctx = getGC();
+    auto ctx = getGC_relin();
     std::string ct1_str(args->args[0], args->lengths[0]);
     std::string ct2_str(args->args[1], args->lengths[1]);
 

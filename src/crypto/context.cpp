@@ -41,9 +41,8 @@
  *     under the path defined by `kGaloisKeyPath` (see globals.hpp).
  *
  * AUTHOR:
- *   Dongfang Zhao (dzhao@cs.washington.edu)
- *   University of Washington
- *   Last Updated: June 1, 2025
+ *   Dongfang Zhao, dongfang.zhao@gmail.com
+ *   Last Updated: November 9, 2025
  */
 
 #include "context.hpp"
@@ -104,30 +103,15 @@ CryptoContext<DCRTPoly> makeBfvContext() {
   return cc;
 }
 
-// CryptoContext<DCRTPoly> getGC() {
-//   static CryptoContext<DCRTPoly> global_ctx = makeBfvContext();
-//   return global_ctx;
-// }
+/**
+ * IMPORTANT: We should load Galois and Relin keys separately depending on the UDF needs.
+ *          This avoids unnecessary key bloat and potential key mismatch issues. 
+ */
 
-CryptoContext<DCRTPoly> loadContextWithGaloisKeysOnly() {
+CryptoContext<DCRTPoly> loadContextWithRelinKeysOnly() {
   auto cc = makeBfvContext(); // Creat context without Galois keys
 
-  // 1. Load and register EvalAutomorphismKeys
-  std::ifstream galin(kGaloisKeyPath, std::ios::binary);
-  if (!galin.is_open()) {
-    std::cerr << "[ERROR] Cannot open Galois key file: " << kGaloisKeyPath
-              << "\n";
-    std::exit(1);
-  }
-
-  if (!cc->DeserializeEvalAutomorphismKey(galin, SerType::BINARY)) {
-    std::cerr << "[ERROR] Failed to deserialize Galois keys.\n";
-    std::exit(1);
-  }
-
-  galin.close();
-
-  // 2. Load and register relin keys (EvalMult keys)
+  // Load and register relin keys (EvalMult keys)
   std::ifstream relinin(kRelinKeyPath, std::ios::binary);
   if (!relinin.is_open()) {
     std::cerr << "[ERROR] Cannot open Relin key file: " << kRelinKeyPath
@@ -145,8 +129,34 @@ CryptoContext<DCRTPoly> loadContextWithGaloisKeysOnly() {
   return cc;
 }
 
+CryptoContext<DCRTPoly> loadContextWithGaloisKeysOnly() {
+  auto cc = makeBfvContext(); // Creat context without Galois keys
+
+  // Load and register EvalAutomorphismKeys
+  std::ifstream galin(kGaloisKeyPath, std::ios::binary);
+  if (!galin.is_open()) {
+    std::cerr << "[ERROR] Cannot open Galois key file: " << kGaloisKeyPath
+              << "\n";
+    std::exit(1);
+  }
+
+  if (!cc->DeserializeEvalAutomorphismKey(galin, SerType::BINARY)) {
+    std::cerr << "[ERROR] Failed to deserialize Galois keys.\n";
+    std::exit(1);
+  }
+
+  galin.close();
+
+  return cc;
+}
+
 CryptoContext<DCRTPoly> getGC() {
   static CryptoContext<DCRTPoly> global_ctx = loadContextWithGaloisKeysOnly();
+  return global_ctx;
+}
+
+CryptoContext<DCRTPoly> getGC_relin() {
+  static CryptoContext<DCRTPoly> global_ctx = loadContextWithRelinKeysOnly();
   return global_ctx;
 }
 
