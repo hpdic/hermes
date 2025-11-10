@@ -1,5 +1,6 @@
-# Update on 11/9/2025, for CloudLab, assuming openFHE is installed
+# Update on 11/9/2025, for CloudLab, assuming OpenFHE is installed
 
+## MySQL
 ```bash
 sudo apt install mysql-server -y
 sudo apt install libmysqlclient-dev -y
@@ -24,6 +25,24 @@ sudo systemctl daemon-reload
 sudo systemctl restart mysql
 bash ./scripts/build.sh
 ```
+
+## App Armor
+Depending on your Linux/MySQL version, Hermes may not be able to access the default directory of keys, i.e., /tmp/hermes/. To fix this:
+```
+sudo vim /etc/apparmor.d/usr.sbin.mysqld
+```
+Add the following two lines at the end of the file (before "}"):
+```
+/tmp/hermes/ r,
+/tmp/hermes/* r,
+```
+Then reset MySQL: 
+```
+sudo apparmor_parser -r /etc/apparmor.d/usr.sbin.mysqld
+sudo systemctl restart mysql
+```
+
+## Debug
 This is how I debug. You want to have two terminals. Maybe the upper terminal is to test your SQL statements like this
 ```
 donzhao@node0:~/hermes$ mysql -u hpdic -e "use hpdic_db; select id, salary, hermes_enc_singular_bfv(salary) from employee_grouped;"
@@ -33,7 +52,9 @@ And the lower one is to recompile the changed code and check the MySQL log:
 donzhao@node0:~/hermes$ ./scripts/build.sh 
 donzhao@node0:~/hermes$ sudo tail /var/log/mysql/error.log -n10
 ```
-If you use VS Code, please add the following to the include path
+
+## VS Code
+If you use VS Code, please add the following to the include the MySQL path
 ```
 /usr/include/mysql/**
 ```
