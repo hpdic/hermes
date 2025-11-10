@@ -108,8 +108,6 @@ KeyPair<DCRTPoly> generateKeypairAndSave(CryptoContext<DCRTPoly> context) {
 }
 
 PublicKey<DCRTPoly> loadPublicKey() {
-  std::cerr << "HPDIC DEBUG " << __FILE__ << ":" << __LINE__ << " called" << std::endl;
-
   std::ifstream in(kPubKeyPath, std::ios::binary);
   if (!in) {
 

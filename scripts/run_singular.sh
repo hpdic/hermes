@@ -1,7 +1,7 @@
 #!/bin/bash
 # run_singular.sh — End-to-end test for Hermes MySQL UDFs with BFV encryption
-# Author: Dr. Dongfang Zhao (dzhao@cs.washington.edu)
-# Last Updated: 2025-05-28
+# Author: Dongfang Zhao, dongfang.zhao@gmail.com
+# Last Updated: November 9, 2025
 #
 # Usage: ./run_singular.sh
 # This script tests the UDF plugin through encrypted SQL queries.
@@ -104,26 +104,6 @@ USE hpdic_db;
 SELECT 
   name, 
   HERMES_DEC_SINGULAR_BFV(HERMES_MUL_BFV(salary_enc_bfv, months_enc_bfv)) AS annual_salary
-FROM employee_enc_grouped;
-EOF
-
-echo -e "\n[8] Adding plaintext bonus_months column (1–2 months)..."
-mysql -u $MYSQL_USER <<EOF
-USE hpdic_db;
-ALTER TABLE employee_enc_grouped ADD COLUMN bonus_months INT;
-UPDATE employee_enc_grouped
-SET bonus_months = FLOOR(1 + RAND() * 2);  -- random 1 or 2
-EOF
-
-echo -e "\n[9] Computing bonus salary = salary × bonus_months (scalar mul)..."
-mysql -u $MYSQL_USER <<EOF
-USE hpdic_db;
-SELECT 
-  name,
-  bonus_months,
-  HERMES_DEC_SINGULAR_BFV(
-    HERMES_MUL_SCALAR_BFV(salary_enc_bfv, bonus_months)
-  ) AS bonus_salary
 FROM employee_enc_grouped;
 EOF
 

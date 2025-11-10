@@ -22,11 +22,9 @@
  *   - long long  HERMES_DEC_SINGULAR_BFV(base64 ciphertext)
  *   - long long  HERMES_SUM_BFV(base64 ciphertexts...)     (Aggregate)
  *   - char*      HERMES_MUL_BFV(base64 ct1, base64 ct2)
- *   - char*      HERMES_MUL_SCALAR_BFV(base64 ct, scalar)
  *
- * Author: Dongfang Zhao (dzhao@cs.washington.edu)
- * Institution: University of Washington (HPDIC Lab)
- * Last Updated: May 31, 2025
+ * Author: Dongfang Zhao, dongfang.zhao@gmail.com
+ * Last Updated: November 9, 2025
  */
 
 #include <cstring>
@@ -118,39 +116,6 @@ long long HERMES_DEC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *is_null,
     *is_null = 1;
     *err = 1;
     return 0;
-  }
-}
-
-// ------------------- SCALAR MULTIPLY -------------------
-
-bool HERMES_MUL_SCALAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
-  if (args->arg_count != 2 || args->arg_type[0] != STRING_RESULT) {
-    std::strcpy(
-        msg, "HERMES_MUL_SCALAR_BFV(ciphertext, scalar) expects (string, int)");
-    return 1;
-  }
-  initid->maybe_null = 1;
-  initid->max_length = 65535;
-  return 0;
-}
-
-char *HERMES_MUL_SCALAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
-                            unsigned long *length, char *is_null, char *error) {
-  try {
-    auto ctx = getGC();
-    std::string ct_str(args->args[0], args->lengths[0]);
-    Ciphertext<DCRTPoly> ct = deserializeCiphertext(decodeBase64(ct_str));
-    int64_t scalar = std::stoll(std::string(args->args[1], args->lengths[1]));
-    auto pt = ctx->MakePackedPlaintext({scalar});
-    pt->SetLength(1);
-    auto ct_res = ctx->EvalMult(ct, pt);
-    std::string encoded = encodeBase64(serializeCiphertext(ct_res));
-    *length = encoded.size();
-    return strdup(encoded.c_str());
-  } catch (...) {
-    *is_null = 1;
-    *error = 1;
-    return nullptr;
   }
 }
 
