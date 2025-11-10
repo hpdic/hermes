@@ -6,15 +6,15 @@ sudo apt install mysql-server -y
 sudo apt install libmysqlclient-dev -y
 sudo mysql_secure_installation
 ```
-Answer the interactive questions above, then:
+Answer the interactive questions above (e.g., just say No to all of them), then:
 ```bash
-cd hermes/
+cd
+git clone git@github.com:hpdic/hermes.git
+cd ~/hermes/
 bash ./scripts/setup_mysql.sh
-sudo bash -c 'echo "/usr/lib/mysql/plugin" > /etc/ld.so.conf.d/mysql-openfhe.conf'
-sudo ldconfig
 sudo EDITOR=vim systemctl edit mysql
 ```
-Add the following to the above file:
+Add the following to the above file (this would allow MySQL to access external libs):
 ```bash
 [Service]
 Environment="LD_LIBRARY_PATH=/usr/lib/mysql/plugin:$LD_LIBRARY_PATH"
@@ -24,6 +24,7 @@ Then run:
 sudo systemctl daemon-reload
 sudo systemctl restart mysql
 sudo cp ~/openfhe-development/build/lib/libOPENFHE* /usr/lib/mysql/plugin/.
+cd ~/hermes
 bash ./scripts/build.sh
 ```
 
@@ -42,6 +43,15 @@ Then reset MySQL:
 ```bash
 sudo apparmor_parser -r /etc/apparmor.d/usr.sbin.mysqld
 sudo systemctl restart mysql
+```
+
+## Run Tests
+Now you should be able to run the test scripts:
+```bash
+cd ~/hermes
+./scripts/run_crypto.sh
+./scripts/run_singular.sh
+./scripts/run_pack.sh
 ```
 
 ## Debug
