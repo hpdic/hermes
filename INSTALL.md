@@ -27,30 +27,30 @@ sudo cp ~/openfhe-development/build/lib/libOPENFHE* /usr/lib/mysql/plugin/.
 bash ./scripts/build.sh
 ```
 
-## App Armor
-Depending on your Linux/MySQL version, Hermes may not be able to access the default directory of keys, i.e., /tmp/hermes/. To fix this:
-```
+## AppArmor
+Depending on your Linux/MySQL version, Hermes may not be able to access the default directory of keys, i.e., /tmp/hermes/. When this happens, you will see a lot of NULL values in the test script, which is likely due to the denied access to the keys stored in the temporary directory. To fix this:
+```bash
 sudo vim /etc/apparmor.d/usr.sbin.mysqld
 ```
 Add the following two lines at the end of the file (before "}"):
-```
+```bash
 # Allow MySQL to access the keys in the temp directory
   /tmp/hermes/ r,
   /tmp/hermes/* r,
 ```
 Then reset MySQL: 
-```
+```bash
 sudo apparmor_parser -r /etc/apparmor.d/usr.sbin.mysqld
 sudo systemctl restart mysql
 ```
 
 ## Debug
 This is how I debug. You want to have two terminals. Maybe the upper terminal is to test your SQL statements like this
-```
+```bash
 donzhao@node0:~/hermes$ mysql -u hpdic -e "use hpdic_db; select id, salary, hermes_enc_singular_bfv(salary) from employee_grouped;"
 ```
 And the lower one is to recompile the changed code and check the MySQL log:
-```
+```bash
 donzhao@node0:~/hermes$ ./scripts/build.sh 
 donzhao@node0:~/hermes$ sudo tail /var/log/mysql/error.log -n10
 ```
