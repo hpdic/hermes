@@ -67,11 +67,17 @@ set -e
 export MYSQL_PWD="hpdic2023"
 MYSQL_USER="hpdic"
 
-PROJECT_ROOT="/home/cc/hermes"
+# For Chameleon Cloud:
+# PROJECT_ROOT="/home/cc/hermes" 
+
+# For CloudLab:
+PROJECT_ROOT="/users/donzhao/hermes"
+
 BUILD_DIR="${PROJECT_ROOT}/build"
+BUILD_OPENFHE="${PROJECT_ROOT}/../openfhe-development/build"
 PLUGIN_DIR="/usr/lib/mysql/plugin"
 
-UDF1_NAME="libhermes_udf.so"
+UDF1_NAME="libhermes_singular_udf.so"
 UDF2_NAME="libhermes_pack_convert.so"
 UDF3_NAME="libhermes_packsum.so"
 UDF4_NAME="libhermes_packupdate.so"
@@ -84,7 +90,7 @@ make -j$(nproc)
 cd "$PROJECT_ROOT"
 
 echo "[*] Copying shared libraries to MySQL plugin directory..."
-sudo cp -v "$BUILD_DIR/$UDF1_NAME" "$PLUGIN_DIR"
+sudo cp -v "$BUILD_DIR/src/singular/$UDF1_NAME" "$PLUGIN_DIR"
 sudo cp -v "$BUILD_DIR/src/pack/$UDF2_NAME" "$PLUGIN_DIR"
 sudo cp -v "$BUILD_DIR/src/pack/$UDF3_NAME" "$PLUGIN_DIR"
 sudo cp -v "$BUILD_DIR/src/pack/$UDF4_NAME" "$PLUGIN_DIR"
@@ -109,7 +115,6 @@ DROP FUNCTION IF EXISTS HERMES_DEC_SINGULAR;
 DROP FUNCTION IF EXISTS HERMES_PACK_ADD;
 DROP FUNCTION IF EXISTS HERMES_PACK_RMV;
 DROP FUNCTION IF EXISTS HERMES_SUM_CIPHERS;
-
 
 CREATE FUNCTION HERMES_ENC_SINGULAR_BFV RETURNS STRING SONAME '$UDF1_NAME';
 CREATE FUNCTION HERMES_DEC_SINGULAR_BFV RETURNS INTEGER SONAME '$UDF1_NAME';
@@ -146,7 +151,7 @@ fi
 echo "[*] Creating writable key directory at $KEY_DIR ..."
 mkdir -p "$KEY_DIR"
 chmod 755 "$KEY_DIR"
-chown "$(whoami):$(whoami)" "$KEY_DIR"
+chown "$(whoami):$(id -g -n)" "$KEY_DIR"
 
 echo "[*] Generating default BFV keypair to /tmp/hermes ..."
 "$BUILD_DIR/gen_keys"

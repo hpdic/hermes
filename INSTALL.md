@@ -1,3 +1,30 @@
+# Update on 11/9/2025, for CloudLab, assuming openFHE is installed
+
+```bash
+sudo apt install mysql-server -y
+sudo apt install libmysqlclient-dev -y
+sudo mysql_secure_installation
+```
+Answer the interactive questions above, then:
+```bash
+cd hermes/
+bash ./scripts/setup_mysql.sh
+sudo bash -c 'echo "/usr/lib/mysql/plugin" > /etc/ld.so.conf.d/mysql-openfhe.conf'
+sudo ldconfig
+sudo systemctl EDITOR=vim edit mysql
+```
+Add the following to the above file:
+```bash
+[Service]
+Environment="LD_LIBRARY_PATH=/usr/lib/mysql/plugin:$LD_LIBRARY_PATH"
+```
+Then run:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart mysql
+bash ./scripts/build.sh
+```
+
 # Hermes: Homomorphic Encryption Plugin for MySQL
 
 Hermes is a MySQL plugin powered by OpenFHE (using the BFV scheme) that enables native SQL-compatible encrypted computation. It supports scalar encryption, packed vector encoding, encrypted aggregation, slot-wise updates, and group-wise secure computation.
@@ -36,12 +63,12 @@ Tested using the following OpenFHE fork:
 
 ## ⚠️ CryptoContext Isolation Warning
 
-OpenFHE contexts are not safely portable across `.so` boundaries. Even with identical parameters, BFV `CryptoContext` objects created in different shared libraries may be structurally incompatible.
+OpenFHE contexts are not safely portable across `.so` boundaries. Even with identical parameters, BFV `CryptoContext` objects created in different shared libraries are structurally incompatible due to crytpographic requirements, e.g., different (pseudo)random seeds.
 
 To ensure encryption and decryption succeed:
 
-✅ Pair encryption and decryption UDFs within the **same `.so`**  
-❌ Avoid passing ciphertexts between plugins
+✅ Pair encryption and decryption UDFs **WITHIN** the **same `.so`**  
+❌ Avoid passing ciphertexts between plugins; it won't work
 
 ---
 
