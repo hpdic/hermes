@@ -1,0 +1,28 @@
+donzhao@node0:~/hermes$ ./scripts/run_crypto.sh
+[*] Running crypto module unit tests...
+
+[+] Running test_eval...
+[test_eval] Initializing BFV context...
+[test_eval] Encrypting a = 7, b = 5
+[test_eval] a + b = 12
+[test_eval] a * b = 35
+[test_eval] a + 3 = 10
+[test_eval] b * 4 = 20
+[✓] All evaluation tests passed.
+
+[+] Running test_serialize...
+[1] Context and keys generated.
+> Wrote 394125 bytes to tmp/publicKey.txt
+> Wrote 197390 bytes to tmp/secretKey.txt
+[2] Keys serialized.
+[3] Encrypting plaintext: 100
+> Wrote 394169 bytes to tmp/ciphertext.txt
+[3] Ciphertext serialized.
+> Read 394125 bytes from tmp/publicKey.txt
+> Read 197390 bytes from tmp/secretKey.txt
+> Read 394169 bytes from tmp/ciphertext.txt
+[4] Context and keys deserialized.
+[5] Decrypted plaintext: 100
+[✓] Ciphertext roundtrip test passed.
+
+[✓] All crypto unit tests passed.

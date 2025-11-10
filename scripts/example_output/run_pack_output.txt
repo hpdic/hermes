@@ -1,0 +1,50 @@
+donzhao@node0:~/hermes$ ./scripts/run_pack.sh 
+
+[HERMES-TEST] === NEW HERMES PACK TEST @ 2025-11-10 16:37:22 ===
+[+] Created table 'employees'.
+[+] Inserted sample employee records.
+[*] Packing salaries per department...
++------+-------------------+
+| dept | encrypted_preview |
++------+-------------------+
+|    1 | 41514141          |
+|    2 | 41514141          |
++------+-------------------+
+[+] Inserted packed ciphertexts into 'packed_salaries' with slot counts.
+[*] Decrypting packed ciphertexts...
++------+------------+----------------+
+| dept | slot_count | salary_vector  |
++------+------------+----------------+
+|    1 |          3 | 1000,2000,1500 |
+|    2 |          2 | 3000,2500      |
++------+------------+----------------+
+[*] Adding 'local_sum_ct' column to packed_salaries...
+[*] Computing and storing encrypted local sum for each group...
+[+] Encrypted local sums written into 'packed_salaries.local_sum_ct'.
+[*] Decrypting local group sums...
++------+------------+----------------+-----------+
+| dept | slot_count | salary_vector  | local_sum |
++------+------------+----------------+-----------+
+|    1 |          3 | 1000,2000,1500 | 4500      |
+|    2 |          2 | 3000,2500      | 5500      |
++------+------------+----------------+-----------+
+[*] Computing global sum (homomorphic sum of local group sums)...
+[+] Computed global ciphertext sum.
+[*] Decrypting global sum...
++------------+
+| global_sum |
++------------+
+| 10000      |
++------------+
+[*] Testing HERMES_PACK_ADD ...
++------+------------+---------------------+-------------+
+| dept | slot_count | updated_vector      | updated_sum |
++------+------------+---------------------+-------------+
+|    1 |          4 | 1000,2000,1500,9999 | 14499       |
++------+------------+---------------------+-------------+
+[*] Testing HERMES_PACK_RMV ...
++------+------------+----------------+-------------+
+| dept | slot_count | updated_vector | updated_sum |
++------+------------+----------------+-------------+
+|    1 |          3 | 1000,9999,1500 | 12499       |
++------+------------+----------------+-------------+

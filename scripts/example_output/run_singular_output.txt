@@ -1,0 +1,36 @@
+donzhao@node0:~/hermes$ ./scripts/run_singular.sh
+[*] Running encrypted SQL tests...
+
+[1] Setting up test database and base employee table...
+
+[2] Encrypting salary values using HERMES_ENC_SINGULAR_BFV...
+
+[3] Previewing ciphertext prefix (first 8 chars)...
+id name department salary_enc_preview
+1 Alice HR AQAAAEAB
+2 Bob HR AQAAAEAB
+3 Carol ENG AQAAAEAB
+4 Dave ENG AQAAAEAB
+
+[4] Decrypting encrypted salaries using HERMES_DEC_SINGULAR_BFV...
+id name department salary_plain
+1 Alice HR 5200
+2 Bob HR 4800
+3 Carol ENG 6000
+4 Dave ENG 5900
+
+[5] Performing homomorphic sum by department using HERMES_SUM_BFV...
+department total_salary
+ENG 11900
+HR 10000
+
+[6] Adding encrypted months column (12 months/year)...
+
+[7] Computing annual salary = salary × months (homomorphic mul)...
+name annual_salary
+Alice 62400
+Bob 57600
+Carol 72000
+Dave 70800
+
+[✓] Test completed successfully.

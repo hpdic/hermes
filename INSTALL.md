@@ -53,6 +53,10 @@ cd ~/hermes
 ./scripts/run_singular.sh
 ./scripts/run_pack.sh
 ```
+Example output of the above test scripts can be found by
+```bash
+cat ~/hermes/scripts/example_output/*
+```
 
 ## Debug
 This is how I debug. You want to have two terminals. Maybe the upper terminal is to test your SQL statements like this
