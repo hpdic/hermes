@@ -58,7 +58,7 @@ extern "C" {
 
 // ------------------- ENCRYPT -------------------
 
-bool HERMES_ENC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
+bool HERMES_ENC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {  
   if (args->arg_count != 1 || args->arg_type[0] != INT_RESULT) {
     std::strcpy(msg, "HERMES_ENC_SINGULAR_BFV requires one integer.");
     return 1;
@@ -71,6 +71,9 @@ bool HERMES_ENC_SINGULAR_BFV_init(UDF_INIT *initid, UDF_ARGS *args, char *msg) {
 char *HERMES_ENC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
                               unsigned long *len, char *is_null, char *err) {
   try {
+
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+
     int64_t val = *reinterpret_cast<long long *>(args->args[0]);
     auto ctx = makeBfvContext();
     auto pk = loadPublicKey();
@@ -79,6 +82,10 @@ char *HERMES_ENC_SINGULAR_BFV(UDF_INIT *, UDF_ARGS *args, char *,
     auto ct = ctx->Encrypt(pk, pt);
     std::string encoded = encodeBase64(serializeCiphertext(ct));
     *len = encoded.size();
+    
+    std::cerr << "HPDIC DEBUG " << __LINE__ << " called" << std::endl;
+    std::cerr << "encoded = " << encoded << std::endl;
+
     return strdup(encoded.c_str());
   } catch (...) {
     *is_null = 1;
