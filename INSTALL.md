@@ -12,7 +12,7 @@ cd hermes/
 bash ./scripts/setup_mysql.sh
 sudo bash -c 'echo "/usr/lib/mysql/plugin" > /etc/ld.so.conf.d/mysql-openfhe.conf'
 sudo ldconfig
-sudo systemctl EDITOR=vim edit mysql
+sudo EDITOR=vim systemctl edit mysql
 ```
 Add the following to the above file:
 ```bash
