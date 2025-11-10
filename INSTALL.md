@@ -23,6 +23,7 @@ Then run:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl restart mysql
+sudo cp ~/openfhe-development/build/lib/libOPENFHE* /usr/lib/mysql/plugin/.
 bash ./scripts/build.sh
 ```
 
@@ -33,8 +34,9 @@ sudo vim /etc/apparmor.d/usr.sbin.mysqld
 ```
 Add the following two lines at the end of the file (before "}"):
 ```
-/tmp/hermes/ r,
-/tmp/hermes/* r,
+# Allow MySQL to access the keys in the temp directory
+  /tmp/hermes/ r,
+  /tmp/hermes/* r,
 ```
 Then reset MySQL: 
 ```
