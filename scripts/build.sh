@@ -56,8 +56,8 @@
 #   - Writable /tmp/hermes directory for key output
 #
 # AUTHOR:
-#   Dongfang Zhao, dongfang.zhao@gmail.com
-#   Last Updated: November 9, 2025
+#   Dongfang Zhao, dzhao@uw.edu
+#   Last Updated: January 16, 2026
 # ========================================================================
 
 set -e
@@ -65,11 +65,7 @@ set -e
 export MYSQL_PWD="hpdic2023"
 MYSQL_USER="hpdic"
 
-# For Chameleon Cloud:
-# PROJECT_ROOT="/home/cc/hermes" 
-
-# For CloudLab:
-PROJECT_ROOT="/users/donzhao/hermes"
+PROJECT_ROOT="$HOME/Hermes" 
 
 BUILD_DIR="${PROJECT_ROOT}/build"
 BUILD_OPENFHE="${PROJECT_ROOT}/../openfhe-development/build"
