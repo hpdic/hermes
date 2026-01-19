@@ -200,7 +200,7 @@ cc@rtx6000:~/Hermes$ sudo tail /var/log/mysql/error.log -n10
 ## VS Code
 If you use VS Code, you might need to manually add the following to help VS Code find the MySQL headers:
 ```bash
-/home/cc/Hermes/src
+${workspaceFolder}/Hermes/src
 ```
 
 # Update on 11/10/2025, for CloudLab, assuming OpenFHE is installed: https://github.com/hpdic/openfhe-development
