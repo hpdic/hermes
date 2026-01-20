@@ -8,17 +8,18 @@ The name is also inspired by *Hermes*, the Greek god of communication, reflectin
 
 ---
 
-## 🧠 Academic Background
+## Technical Documentation
+
+* [Technical Report, Latest](paper/TR2026/hermes.pdf)
+* [Preprint, June 2025](https://arxiv.org/abs/2506.03308)
+
+## Installation
+
+Please refer to the [INSTALL.md](INSTALL.md) file for detailed installation instructions.
+
+## Academic Background
 
 Hermes is part of an academic research initiative at the University of Washington, aiming to bridge modern cryptography and database systems. It is the first system to integrate fully homomorphic encryption (FHE) directly into a production-grade SQL engine, supporting vectorized queries with provable security guarantees.
-
-The system and its contributions are formally described in the following research paper:
-
-> **Hermes: Practical Vectorized Query Processing over Homomorphically Encrypted Relational Databases**  
-> *Dongfang Zhao*  
-> [https://arxiv.org/abs/2506.03308](https://arxiv.org/abs/2506.03308)
-
-Please cite the paper if you use Hermes in academic publications.
 
 ## 🔐 Key Features
 
@@ -44,7 +45,7 @@ All functions use the **BFV** scheme via [OpenFHE](https://github.com/openfheorg
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 Build and test with:
 
@@ -57,7 +58,7 @@ Build and test with:
 
 ---
 
-## 🧪 Reproducible Experiments
+## Reproducible Experiments
 
 To run the benchmark suite:
 
@@ -71,7 +72,7 @@ This will produce results in `./experiments/result/*.txt`, covering all three da
 
 ---
 
-## 📦 Design Philosophy
+## Design Philosophy
 
 Hermes is designed to:
 
@@ -82,14 +83,13 @@ Hermes is designed to:
 
 ---
 
-## 📬 Contact
+## Contact
 
-(c) 2025, HPDIC Lab, https://hpdic.github.io  
+(c) 2025-2026, HPDIC Lab, https://hpdic.github.io  
 Author: **Dongfang Zhao**  
-📧 Email: <dongfang.zhao@gmail.com>
+Email: <dzhao@uw.edu>
 
 ---
 
-## 📄 License
-
+## License
 This project is released under the [Apache License 2.0](LICENSE).
