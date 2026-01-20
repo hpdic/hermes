@@ -21,7 +21,7 @@ Please refer to the [INSTALL.md](INSTALL.md) file for detailed installation inst
 
 Hermes is part of an academic research initiative at the University of Washington, aiming to bridge modern cryptography and database systems. It is the first system to integrate fully homomorphic encryption (FHE) directly into a production-grade SQL engine, supporting vectorized queries with provable security guarantees.
 
-## 🔐 Key Features
+## Key Features
 
 Hermes exposes the following homomorphic encryption UDFs as native SQL functions. Each UDF is implemented in a corresponding `.so` plugin module:
 
@@ -86,7 +86,7 @@ Hermes is designed to:
 ## Contact
 
 (c) 2025-2026, HPDIC Lab, https://hpdic.github.io  
-Author: **Dongfang Zhao**  
+Author: Dongfang Zhao  
 Email: <dzhao@uw.edu>
 
 ---
